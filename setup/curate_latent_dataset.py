@@ -230,7 +230,7 @@ if __name__ == "__main__":
         processor = AutoProcessor.from_pretrained(MODEL_ID, trust_remote_code=True)
         deconstructed_model = DeconstructedFlorence2(MODEL_ID, device=DEVICE, dtype=COMPUTE_DTYPE, trust_remote_code=True)
         deconstructed_model.model.eval()
-        vision_encoder = deconstructed_model.vision_encoder.compile()
+        vision_encoder = deconstructed_model.vision_encoder
     except Exception as e:
         print(f"Error loading model or processor '{MODEL_ID}': {e}", file=sys.stderr)
         sys.exit(1)
