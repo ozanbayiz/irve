@@ -32,6 +32,70 @@ class FlorenceVisionEncoder(nn.Module):
         self.config = vision_config
         self.device = device
         self.dtype = dtype
+    
+    def forward(self, pixel_values: torch.Tensor) -> torch.Tensor:
+        """
+        Internal encoding logic, replicating Florence2ForConditionalGeneration._encode_image.
+        """
+        if pixel_values.ndim != 4:
+            raise ValueError(f"Expected pixel_values to be 4D (B, C, H, W), got {pixel_values.ndim}D")
+        pixel_values = pixel_values.to(device=self.device, dtype=self.dtype)
+        batch_size, _, H, W = pixel_values.shape
+        T = 1 # Hardcoded assumption based on reference _encode_image
+        current_size = (H, W)
+        x = pixel_values
+
+        # Pass through convolutional embeddings and blocks
+        for i in range(len(self.blocks)):
+            x, current_size = self.conv_embeds[i](x, current_size)
+            x, current_size = self.blocks[i](x, current_size)
+
+        # Apply positional embeddings
+        if self.pos_embed is not None:
+            # Reshape for positional embedding which expects (B*T, H, W, C) after view
+            x = x.view(batch_size * T, -1, x.shape[-1])
+            num_tokens = x.shape[-2]
+            h = w = int(num_tokens ** 0.5) # Assumes square feature map
+            assert h * w == num_tokens, 'Only square feature maps supported for pos embed in this impl.'
+            x = x.view(batch_size * T, h, w, x.shape[-1])
+            pos_embed = self.pos_embed(x)
+            x = x + pos_embed
+            x = x.view(batch_size, T * h*w, x.shape[-1]) # Reshape back to (B, T*num_tokens, C)
+
+        # Apply temporal embeddings (only relevant if T > 1, which is not assumed here)
+        if self.temporal_embed is not None:
+            visual_temporal_embed = self.temporal_embed(x.view(batch_size, T, -1, x.shape[-1])[:, :, 0])
+            x = x.view(batch_size, T, -1, x.shape[-1]) + visual_temporal_embed.view(1, T, 1, x.shape[-1])
+
+        # Feature selection based on config (mirroring original _encode_image)
+        x_feat_dict = {}
+
+        spatial_avg_pool_x = x.view(batch_size, T, -1, x.shape[-1]).mean(dim=2)
+        x_feat_dict['spatial_avg_pool'] = spatial_avg_pool_x
+
+        temporal_avg_pool_x = x.view(batch_size, T, -1, x.shape[-1]).mean(dim=1)
+        x_feat_dict['temporal_avg_pool'] = temporal_avg_pool_x
+
+        x = x.view(batch_size, T, -1, x.shape[-1])[:, -1]
+        x_feat_dict['last_frame'] = x
+
+        new_x = []
+        for source in self.config.image_feature_source:
+            if source not in x_feat_dict:
+                raise ValueError(f"Invalid image feature source: {source}")
+            feature_tensor = x_feat_dict[source]
+            new_x.append(feature_tensor)
+
+        # Concatenate selected features along the sequence dimension
+        x = torch.cat(new_x, dim=1)
+
+        # Apply projection and normalization
+        x = x @ self.projection_layer
+        image_features = self.proj_norm(x)
+
+        # Return final features and optionally the intermediate ones collected earlier
+        return image_features
+    
 
     def encode(self, pixel_values: torch.Tensor) -> torch.Tensor:
         """

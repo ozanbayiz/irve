@@ -85,7 +85,7 @@ def get_shapes_and_dtypes(
 
     with torch.no_grad():
         # Use encode() to get final encoded features, not intermediate latents
-        encoded_features_sample = vision_encoder.encode(pixel_values_sample)
+        encoded_features_sample = vision_encoder(pixel_values_sample)
 
     raw_shape = pixel_values_sample.shape # Includes batch dim 1
     encoded_shape = encoded_features_sample.shape # Includes batch dim 1
@@ -175,7 +175,7 @@ def process_and_store_split(
 
         with torch.no_grad():
             # Get only the final encoded features
-            encoded_features = vision_encoder.encode(pixel_values)
+            encoded_features = vision_encoder(pixel_values)
 
         # Write data directly to the pre-allocated slice
         end_offset = current_offset + current_batch_size
@@ -230,7 +230,7 @@ if __name__ == "__main__":
         processor = AutoProcessor.from_pretrained(MODEL_ID, trust_remote_code=True)
         deconstructed_model = DeconstructedFlorence2(MODEL_ID, device=DEVICE, dtype=COMPUTE_DTYPE, trust_remote_code=True)
         deconstructed_model.model.eval()
-        vision_encoder = deconstructed_model.vision_encoder
+        vision_encoder = deconstructed_model.vision_encoder.compile()
     except Exception as e:
         print(f"Error loading model or processor '{MODEL_ID}': {e}", file=sys.stderr)
         sys.exit(1)
