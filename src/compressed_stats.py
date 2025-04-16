@@ -36,18 +36,10 @@ def flatten_and_group(encoded, race_labels, num_races=NUM_RACES):
     return race_groups
 
 
-# -------------------------------
-# Batch into [7, 589824] tensors
-# -------------------------------
-def batch_groups(race_groups):
-    return [torch.stack(group) for group in race_groups]
-
-
-
 def main():
     # load in SAE
     model = SparseAutoencoder()
-    model.load_state_dict(torch.load("../models/sae_weights.pt"))
+    model.load_state_dict(torch.load("../models/sae_weights.pt")) # real file TBD
 
     print(f"Loading data from: {H5_FILE}")
     encoded, race_labels = load_data(H5_FILE, SPLIT)
@@ -56,7 +48,7 @@ def main():
     race_groups = flatten_and_group(encoded, race_labels)
 
     print("Batching groups...")
-    batched = batch_groups(race_groups)
+    batched = [torch.stack(group) for group in race_groups]
 
     for i, batch in enumerate(batched):
         print(f"Race {i}: {batch.shape[0]} samples, vector dim {batch.shape[1]}")
@@ -67,6 +59,7 @@ def main():
     means = [c.mean(dim=0) for c in compressed_reps]
     variances = [c.var(dim=0) for c in compressed_reps]
 
+    # print out stats for each racial group
     for i in range(len(means)):
         print(f"Race {i}| mean: {means[i]}; var: {variances[i]}") 
 
