@@ -1,0 +1,124 @@
+\documentclass{article}
+
+\usepackage{arxiv}
+
+\usepackage[utf8]{inputenc} % allow utf-8 input
+\usepackage[T1]{fontenc}    % use 8-bit T1 fonts
+\usepackage{hyperref}       % hyperlinks
+\usepackage{url}            % simple URL typesetting
+\usepackage{booktabs}       % professional-quality tables
+\usepackage{amsfonts}       % blackboard math symbols
+\usepackage{nicefrac}       % compact symbols for 1/2, etc.
+\usepackage{microtype}      % microtypography
+\usepackage{cleveref}       % smart cross-referencing
+\usepackage{lipsum}         % Can be removed after putting your text content
+\usepackage{graphicx}
+\usepackage{natbib}
+\usepackage{doi}
+
+\title{Using SAEs to Understand and Manipulate Racial Classifications within the Latent Vector Space}
+
+% Here you can change the date presented in the paper title
+%\date{September 9, 1985}
+% Or remove it
+%\date{}
+
+\newif\ifuniqueAffiliation
+% Comment to use multiple affiliations variant of author block 
+\uniqueAffiliationtrue
+
+\ifuniqueAffiliation % Standard variant of author block
+\author{ Ozan Bayiz \\
+	\texttt{ozanbayiz@berkeley.edu} \\
+	%% examples of more authors
+	\And
+	Kapil Malladi \\
+	\texttt{kapilmalladi@berkeley.edu} \\
+	\AND
+	Charlie Cooper \\
+	\texttt{charlie.c@berkeley.edu} \\
+	\And
+	Raiyan Hammad Ausaf \\
+	\texttt{raiyanausaf14@berkeley.edu} \\
+}
+\else
+% Multiple affiliations variant of author block
+\usepackage{authblk}
+\renewcommand\Authfont{\bfseries}
+\setlength{\affilsep}{0em}
+% box is needed for correct spacing with authblk
+\newbox{\orcid}\sbox{\orcid}{\includegraphics[scale=0.06]{orcid.pdf}} 
+\author[1]{%
+	\href{https://orcid.org/0000-0000-0000-0000}{\usebox{\orcid}\hspace{1mm}David S.~Hippocampus\thanks{\texttt{hippo@cs.cranberry-lemon.edu}}}%
+}
+\author[1,2]{%
+	\href{https://orcid.org/0000-0000-0000-0000}{\usebox{\orcid}\hspace{1mm}Elias D.~Striatum\thanks{\texttt{stariate@ee.mount-sheikh.edu}}}%
+}
+\affil[1]{Department of Computer Science, Cranberry-Lemon University, Pittsburgh, PA 15213}
+\affil[2]{Department of Electrical Engineering, Mount-Sheikh University, Santa Narimana, Levand}
+\fi
+
+% Uncomment to override  the `A preprint' in the header
+\renewcommand{\headeright}{}
+\renewcommand{\undertitle}{}
+\renewcommand{\shorttitle}{\textit{arXiv} Template}
+
+
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+	We need more GPUs.
+\end{abstract}
+
+
+
+\section{"Coherent Story" Justifying our "Systematic Investigation"}
+
+
+\section{Method}
+\subsection{Linear Probe}
+\subsection{SAE}
+\subsection{Collect Stats}
+Table and visualization of the means in latent vector space
+\subsection{Intervene}
+What becomes an interesting question is how moving in the latent space truly affects the racial classification. It seems entirely plausible that moving along a vector defined between white and asian could bring the classification closer to Black. Or the average activation (of all racial means) being actually classified as Black or Indian, etc. due to proximity to the mean. If I am understanding this correctly, we will still be able to do a sanity check based on classifying the mean activations of each race ( I really hope that works)
+
+
+\section{Components}
+\subsection{Florence-2}
+\subsection{SAE}
+\subsection{Fairface}
+
+
+
+\bibliographystyle{unsrtnat}
+\bibliography{references}  %%% Uncomment this line and comment out the ``thebibliography'' section below to use the external .bib file (using bibtex) .
+
+
+%%% Uncomment this section and comment out the \bibliography{references} line above to use inline references.
+% \begin{thebibliography}{1}
+
+% 	\bibitem{kour2014real}
+% 	George Kour and Raid Saabne.
+% 	\newblock Real-time segmentation of on-line handwritten arabic script.
+% 	\newblock In {\em Frontiers in Handwriting Recognition (ICFHR), 2014 14th
+% 			International Conference on}, pages 417--422. IEEE, 2014.
+
+% 	\bibitem{kour2014fast}
+% 	George Kour and Raid Saabne.
+% 	\newblock Fast classification of handwritten on-line arabic characters.
+% 	\newblock In {\em Soft Computing and Pattern Recognition (SoCPaR), 2014 6th
+% 			International Conference of}, pages 312--318. IEEE, 2014.
+
+% 	\bibitem{keshet2016prediction}
+% 	Keshet, Renato, Alina Maor, and George Kour.
+% 	\newblock Prediction-Based, Prioritized Market-Share Insight Extraction.
+% 	\newblock In {\em Advanced Data Mining and Applications (ADMA), 2016 12th International 
+%                       Conference of}, pages 81--94,2016.
+
+% \end{thebibliography}
+
+
+\end{document}
