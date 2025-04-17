@@ -1,0 +1,16 @@
+{"time":"2025-04-14T16:22:17.495756-07:00","level":"INFO","msg":"stream: starting","core version":"0.19.9","symlink path":"/Users/kapilmalladi/Documents/cs182/cs182_project/wandb/run-20250414_162217-g547gg9x/logs/debug-core.log"}
+{"time":"2025-04-14T16:22:17.507914-07:00","level":"ERROR","msg":"monitor: failed to initialize GPU asset: monitor: could not start GPU binary: fork/exec /Users/kapilmalladi/anaconda3/envs/cs182/lib/python3.12/site-packages/wandb/bin/gpu_stats: bad CPU type in executable"}
+{"time":"2025-04-14T16:22:17.593915-07:00","level":"INFO","msg":"created new stream","id":"g547gg9x"}
+{"time":"2025-04-14T16:22:17.594-07:00","level":"INFO","msg":"stream: started","id":"g547gg9x"}
+{"time":"2025-04-14T16:22:17.594049-07:00","level":"INFO","msg":"writer: Do: started","stream_id":"g547gg9x"}
+{"time":"2025-04-14T16:22:17.594073-07:00","level":"INFO","msg":"sender: started","stream_id":"g547gg9x"}
+{"time":"2025-04-14T16:22:17.594082-07:00","level":"INFO","msg":"handler: started","stream_id":"g547gg9x"}
+{"time":"2025-04-14T16:22:17.712841-07:00","level":"INFO","msg":"Starting system monitor"}
+{"time":"2025-04-14T16:22:27.913805-07:00","level":"INFO","msg":"stream: closing","id":"g547gg9x"}
+{"time":"2025-04-14T16:22:27.914348-07:00","level":"INFO","msg":"Stopping system monitor"}
+{"time":"2025-04-14T16:22:27.914584-07:00","level":"INFO","msg":"Stopped system monitor"}
+{"time":"2025-04-14T16:22:28.379642-07:00","level":"INFO","msg":"fileTransfer: Close: file transfer manager closed"}
+{"time":"2025-04-14T16:22:28.578741-07:00","level":"INFO","msg":"handler: closed","stream_id":"g547gg9x"}
+{"time":"2025-04-14T16:22:28.578758-07:00","level":"INFO","msg":"writer: Close: closed","stream_id":"g547gg9x"}
+{"time":"2025-04-14T16:22:28.578768-07:00","level":"INFO","msg":"sender: closed","stream_id":"g547gg9x"}
+{"time":"2025-04-14T16:22:28.578874-07:00","level":"INFO","msg":"stream: closed","id":"g547gg9x"}
