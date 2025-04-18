@@ -1,0 +1,69 @@
+[2025-04-18 06:39:35,996][__main__][INFO] - Instantiating trainer: src.trainers.sae_trainer.SAETrainer
+[2025-04-18 06:39:38,016][src.trainers.base_trainer][INFO] - Using device: cuda
+[2025-04-18 06:39:38,016][__main__][INFO] - Trainer instantiated successfully.
+[2025-04-18 06:39:38,016][__main__][INFO] - Starting trainer run...
+[2025-04-18 06:39:38,016][src.trainers.base_trainer][INFO] - Initializing WandB run... Project: irve-hydra-refactor
+[2025-04-18 06:39:39,113][src.trainers.base_trainer][INFO] - WandB Run Name: trim-plant-6, ID: zdregf1h
+[2025-04-18 06:39:39,113][src.trainers.sae_trainer][INFO] - Setting up SAE Trainer components...
+[2025-04-18 06:39:39,113][src.trainers.sae_trainer][INFO] - Instantiating dataset using config: src.datasets.datasets.FairFaceDataset
+[2025-04-18 06:39:39,115][src.datasets.datasets][INFO] - Initializing FairFaceDataset: path=./data/fairface_latent_stratified.hdf5, mode=training, requested_labels=[]
+[2025-04-18 06:39:39,124][src.datasets.datasets][INFO] - Dataset contains 11842 items in mode 'training'
+[2025-04-18 06:39:39,124][src.datasets.datasets][INFO] - Labels explicitly disabled. Will return features only.
+[2025-04-18 06:39:39,126][src.datasets.datasets][INFO] - Initializing FairFaceDataset: path=./data/fairface_latent_stratified.hdf5, mode=validation, requested_labels=[]
+[2025-04-18 06:39:39,128][src.datasets.datasets][INFO] - Dataset contains 2666 items in mode 'validation'
+[2025-04-18 06:39:39,128][src.datasets.datasets][INFO] - Labels explicitly disabled. Will return features only.
+[2025-04-18 06:39:39,128][src.trainers.sae_trainer][INFO] - Datasets created: Train size=11842, Val size=2666
+[2025-04-18 06:39:39,129][src.trainers.sae_trainer][INFO] - Train Dataloader: 186 batches, 4 workers, pin_memory=True
+[2025-04-18 06:39:39,129][src.trainers.sae_trainer][INFO] - Validation Dataloader: 42 batches
+[2025-04-18 06:39:39,129][src.trainers.sae_trainer][INFO] - Instantiating model: src.models.sparse_autoencoder.SparseAutoencoder
+[2025-04-18 06:39:39,326][src.trainers.sae_trainer][INFO] - Determined input_size from dataset: 443136
+[2025-04-18 06:39:39,332][src.trainers.sae_trainer][ERROR] - Could not determine input_size from dataset. Please set model.input_size in the config.
+Traceback (most recent call last):
+  File "/home/ozanbayiz/miniforge3/envs/irve/lib/python3.13/site-packages/hydra/_internal/instantiate/_instantiate2.py", line 92, in _call_target
+    return _target_(*args, **kwargs)
+TypeError: SparseAutoencoder.__init__() got an unexpected keyword argument 'input_size_height'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/ozanbayiz/irve/src/trainers/sae_trainer.py", line 108, in _setup
+    self.model = hydra.utils.instantiate(self.cfg.model, input_size=input_size).to(self.device)
+                 ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ozanbayiz/miniforge3/envs/irve/lib/python3.13/site-packages/hydra/_internal/instantiate/_instantiate2.py", line 226, in instantiate
+    return instantiate_node(
+        config, *args, recursive=_recursive_, convert=_convert_, partial=_partial_
+    )
+  File "/home/ozanbayiz/miniforge3/envs/irve/lib/python3.13/site-packages/hydra/_internal/instantiate/_instantiate2.py", line 347, in instantiate_node
+    return _call_target(_target_, partial, args, kwargs, full_key)
+  File "/home/ozanbayiz/miniforge3/envs/irve/lib/python3.13/site-packages/hydra/_internal/instantiate/_instantiate2.py", line 97, in _call_target
+    raise InstantiationException(msg) from e
+hydra.errors.InstantiationException: Error in call to target 'src.models.sparse_autoencoder.SparseAutoencoder':
+TypeError("SparseAutoencoder.__init__() got an unexpected keyword argument 'input_size_height'")
+full_key: cfg.model
+[2025-04-18 06:39:39,338][src.trainers.sae_trainer][ERROR] - Setup failed. Aborting run.
+Traceback (most recent call last):
+  File "/home/ozanbayiz/miniforge3/envs/irve/lib/python3.13/site-packages/hydra/_internal/instantiate/_instantiate2.py", line 92, in _call_target
+    return _target_(*args, **kwargs)
+TypeError: SparseAutoencoder.__init__() got an unexpected keyword argument 'input_size_height'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/ozanbayiz/irve/src/trainers/sae_trainer.py", line 217, in run
+    self._setup()
+    ~~~~~~~~~~~^^
+  File "/home/ozanbayiz/irve/src/trainers/sae_trainer.py", line 108, in _setup
+    self.model = hydra.utils.instantiate(self.cfg.model, input_size=input_size).to(self.device)
+                 ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ozanbayiz/miniforge3/envs/irve/lib/python3.13/site-packages/hydra/_internal/instantiate/_instantiate2.py", line 226, in instantiate
+    return instantiate_node(
+        config, *args, recursive=_recursive_, convert=_convert_, partial=_partial_
+    )
+  File "/home/ozanbayiz/miniforge3/envs/irve/lib/python3.13/site-packages/hydra/_internal/instantiate/_instantiate2.py", line 347, in instantiate_node
+    return _call_target(_target_, partial, args, kwargs, full_key)
+  File "/home/ozanbayiz/miniforge3/envs/irve/lib/python3.13/site-packages/hydra/_internal/instantiate/_instantiate2.py", line 97, in _call_target
+    raise InstantiationException(msg) from e
+hydra.errors.InstantiationException: Error in call to target 'src.models.sparse_autoencoder.SparseAutoencoder':
+TypeError("SparseAutoencoder.__init__() got an unexpected keyword argument 'input_size_height'")
+full_key: cfg.model
+[2025-04-18 06:39:39,342][__main__][INFO] - Trainer run finished.

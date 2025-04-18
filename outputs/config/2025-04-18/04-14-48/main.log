@@ -1,0 +1,52 @@
+[2025-04-18 04:14:48,218][__main__][INFO] - Instantiating trainer: src.trainers.sae_trainer.SAETrainer
+[2025-04-18 04:14:50,753][src.trainers.base_trainer][INFO] - Using device: cuda
+[2025-04-18 04:14:50,753][__main__][INFO] - Trainer instantiated successfully.
+[2025-04-18 04:14:50,753][__main__][INFO] - Starting trainer run...
+[2025-04-18 04:14:50,753][src.trainers.base_trainer][INFO] - Initializing WandB run... Project: irve-hydra-refactor
+[2025-04-18 04:14:52,068][src.trainers.base_trainer][INFO] - WandB Run Name: bumbling-bee-4, ID: 9lj65lya
+[2025-04-18 04:14:52,069][src.trainers.sae_trainer][INFO] - Setting up SAE Trainer components...
+[2025-04-18 04:14:52,069][src.trainers.sae_trainer][INFO] - Instantiating dataset using config: src.datasets.datasets.FairFaceDataset
+[2025-04-18 04:14:52,151][src.datasets.datasets][INFO] - Initializing FairFaceDataset: path=./data/fairface_latent_stratified.hdf5, mode=training, requested_labels=[]
+[2025-04-18 04:14:52,154][src.datasets.datasets][INFO] - Dataset contains 11842 items in mode 'training'
+[2025-04-18 04:14:52,154][src.datasets.datasets][INFO] - Labels explicitly disabled. Will return features only.
+[2025-04-18 04:14:52,156][src.datasets.datasets][INFO] - Initializing FairFaceDataset: path=./data/fairface_latent_stratified.hdf5, mode=validation, requested_labels=[]
+[2025-04-18 04:14:52,157][src.datasets.datasets][INFO] - Dataset contains 2666 items in mode 'validation'
+[2025-04-18 04:14:52,157][src.datasets.datasets][INFO] - Labels explicitly disabled. Will return features only.
+[2025-04-18 04:14:52,158][src.trainers.sae_trainer][INFO] - Datasets created: Train size=11842, Val size=2666
+[2025-04-18 04:14:52,158][src.trainers.sae_trainer][INFO] - Train Dataloader: 371 batches...
+[2025-04-18 04:14:52,158][src.trainers.sae_trainer][INFO] - Validation Dataloader: 84 batches
+[2025-04-18 04:16:41,473][__main__][ERROR] - An error occurred during trainer instantiation or execution:
+Traceback (most recent call last):
+  File "/home/ozanbayiz/irve/src/main.py", line 44, in main
+    trainer.run()
+    ~~~~~~~~~~~^^
+  File "/home/ozanbayiz/irve/src/trainers/sae_trainer.py", line 147, in run
+    self._setup()       # Setup components
+    ~~~~~~~~~~~^^
+  File "/home/ozanbayiz/irve/src/trainers/sae_trainer.py", line 62, in _setup
+    self.model = hydra.utils.instantiate(self.cfg.model).to(self.device)
+                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "/home/ozanbayiz/miniforge3/envs/irve/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1343, in to
+    return self._apply(convert)
+           ~~~~~~~~~~~^^^^^^^^^
+  File "/home/ozanbayiz/miniforge3/envs/irve/lib/python3.13/site-packages/torch/nn/modules/module.py", line 903, in _apply
+    module._apply(fn)
+    ~~~~~~~~~~~~~^^^^
+  File "/home/ozanbayiz/miniforge3/envs/irve/lib/python3.13/site-packages/torch/nn/modules/module.py", line 903, in _apply
+    module._apply(fn)
+    ~~~~~~~~~~~~~^^^^
+  File "/home/ozanbayiz/miniforge3/envs/irve/lib/python3.13/site-packages/torch/nn/modules/module.py", line 930, in _apply
+    param_applied = fn(param)
+  File "/home/ozanbayiz/miniforge3/envs/irve/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1329, in convert
+    return t.to(
+           ~~~~^
+        device,
+        ^^^^^^^
+        dtype if t.is_floating_point() or t.is_complex() else None,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        non_blocking,
+        ^^^^^^^^^^^^^
+    )
+    ^
+torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 27.05 GiB. GPU 0 has a total capacity of 39.50 GiB of which 7.70 GiB is free. Process 1390953 has 4.28 GiB memory in use. Including non-PyTorch memory, this process has 27.45 GiB memory in use. Of the allocated memory 27.05 GiB is allocated by PyTorch, and 1.94 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)
+[2025-04-18 04:16:41,478][__main__][ERROR] - Finishing WandB run with failure status due to error.

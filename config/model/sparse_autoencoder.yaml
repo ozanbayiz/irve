@@ -1,0 +1,5 @@
+_target_: src.models.sparse_autoencoder.SparseAutoencoder
+
+# Parameters specific to the SparseAutoencoder
+input_size: 443136
+hidden_size: 16384

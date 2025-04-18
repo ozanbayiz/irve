@@ -1,5 +1,0 @@
-Traceback (most recent call last):
-  File "/Users/kapilmalladi/Documents/cs182/cs182_project/sparse_autoencoder.py", line 29, in <module>
-    tens = torch.tensor(X)
-           ^^^^^^^^^^^^^^^
-ValueError: only one element tensors can be converted to Python scalars

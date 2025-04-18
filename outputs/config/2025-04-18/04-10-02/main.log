@@ -1,0 +1,95 @@
+[2025-04-18 04:10:02,213][__main__][INFO] - Instantiating trainer: src.trainers.sae_trainer.SAETrainer
+[2025-04-18 04:10:04,626][src.trainers.base_trainer][INFO] - Using device: cuda
+[2025-04-18 04:10:04,626][__main__][INFO] - Trainer instantiated successfully.
+[2025-04-18 04:10:04,626][__main__][INFO] - Starting trainer run...
+[2025-04-18 04:10:04,626][src.trainers.base_trainer][INFO] - Initializing WandB run... Project: irve-hydra-refactor
+[2025-04-18 04:10:05,705][src.trainers.base_trainer][INFO] - WandB Run Name: stellar-energy-2, ID: c4qt9rmz
+[2025-04-18 04:10:05,706][src.trainers.sae_trainer][INFO] - Setting up SAE Trainer components...
+[2025-04-18 04:10:05,706][src.trainers.sae_trainer][INFO] - Instantiating dataset using config: src.datasets.datasets.FairFaceDataset
+[2025-04-18 04:10:05,853][src.datasets.datasets][INFO] - Initializing FairFaceDataset: path=./data/fairface_latent_stratified.hdf5, mode=training, requested_labels=[]
+[2025-04-18 04:10:05,853][src.datasets.datasets][ERROR] - Failed during dataset initialization from ./data/fairface_latent_stratified.hdf5 mode 'training'
+Traceback (most recent call last):
+  File "/home/ozanbayiz/irve/src/datasets/datasets.py", line 65, in __init__
+    with h5py.File(self.hdf5_path, 'r') as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ozanbayiz/miniforge3/envs/irve/lib/python3.13/site-packages/h5py/_hl/files.py", line 564, in __init__
+    fid = make_fid(name, mode, userblock_size, fapl, fcpl, swmr=swmr)
+  File "/home/ozanbayiz/miniforge3/envs/irve/lib/python3.13/site-packages/h5py/_hl/files.py", line 238, in make_fid
+    fid = h5f.open(name, flags, fapl=fapl)
+  File "h5py/_objects.pyx", line 54, in h5py._objects.with_phil.wrapper
+  File "h5py/_objects.pyx", line 55, in h5py._objects.with_phil.wrapper
+  File "h5py/h5f.pyx", line 102, in h5py.h5f.open
+FileNotFoundError: [Errno 2] Unable to synchronously open file (unable to open file: name = './data/fairface_latent_stratified.hdf5', errno = 2, error message = 'No such file or directory', flags = 0, o_flags = 0)
+[2025-04-18 04:10:05,856][src.trainers.sae_trainer][ERROR] - Failed to instantiate dataset using src.datasets.datasets.FairFaceDataset. Ensure it accepts a 'mode' argument.
+Traceback (most recent call last):
+  File "/home/ozanbayiz/miniforge3/envs/irve/lib/python3.13/site-packages/hydra/_internal/instantiate/_instantiate2.py", line 92, in _call_target
+    return _target_(*args, **kwargs)
+  File "/home/ozanbayiz/irve/src/datasets/datasets.py", line 65, in __init__
+    with h5py.File(self.hdf5_path, 'r') as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ozanbayiz/miniforge3/envs/irve/lib/python3.13/site-packages/h5py/_hl/files.py", line 564, in __init__
+    fid = make_fid(name, mode, userblock_size, fapl, fcpl, swmr=swmr)
+  File "/home/ozanbayiz/miniforge3/envs/irve/lib/python3.13/site-packages/h5py/_hl/files.py", line 238, in make_fid
+    fid = h5f.open(name, flags, fapl=fapl)
+  File "h5py/_objects.pyx", line 54, in h5py._objects.with_phil.wrapper
+  File "h5py/_objects.pyx", line 55, in h5py._objects.with_phil.wrapper
+  File "h5py/h5f.pyx", line 102, in h5py.h5f.open
+FileNotFoundError: [Errno 2] Unable to synchronously open file (unable to open file: name = './data/fairface_latent_stratified.hdf5', errno = 2, error message = 'No such file or directory', flags = 0, o_flags = 0)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/ozanbayiz/irve/src/trainers/sae_trainer.py", line 32, in _setup
+    self.train_dataset = hydra.utils.instantiate(self.cfg.data, mode='training')
+                         ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ozanbayiz/miniforge3/envs/irve/lib/python3.13/site-packages/hydra/_internal/instantiate/_instantiate2.py", line 226, in instantiate
+    return instantiate_node(
+        config, *args, recursive=_recursive_, convert=_convert_, partial=_partial_
+    )
+  File "/home/ozanbayiz/miniforge3/envs/irve/lib/python3.13/site-packages/hydra/_internal/instantiate/_instantiate2.py", line 347, in instantiate_node
+    return _call_target(_target_, partial, args, kwargs, full_key)
+  File "/home/ozanbayiz/miniforge3/envs/irve/lib/python3.13/site-packages/hydra/_internal/instantiate/_instantiate2.py", line 97, in _call_target
+    raise InstantiationException(msg) from e
+hydra.errors.InstantiationException: Error in call to target 'src.datasets.datasets.FairFaceDataset':
+FileNotFoundError(2, "Unable to synchronously open file (unable to open file: name = './data/fairface_latent_stratified.hdf5', errno = 2, error message = 'No such file or directory', flags = 0, o_flags = 0)")
+full_key: cfg.data
+[2025-04-18 04:10:05,858][__main__][ERROR] - An error occurred during trainer instantiation or execution:
+Traceback (most recent call last):
+  File "/home/ozanbayiz/miniforge3/envs/irve/lib/python3.13/site-packages/hydra/_internal/instantiate/_instantiate2.py", line 92, in _call_target
+    return _target_(*args, **kwargs)
+  File "/home/ozanbayiz/irve/src/datasets/datasets.py", line 65, in __init__
+    with h5py.File(self.hdf5_path, 'r') as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ozanbayiz/miniforge3/envs/irve/lib/python3.13/site-packages/h5py/_hl/files.py", line 564, in __init__
+    fid = make_fid(name, mode, userblock_size, fapl, fcpl, swmr=swmr)
+  File "/home/ozanbayiz/miniforge3/envs/irve/lib/python3.13/site-packages/h5py/_hl/files.py", line 238, in make_fid
+    fid = h5f.open(name, flags, fapl=fapl)
+  File "h5py/_objects.pyx", line 54, in h5py._objects.with_phil.wrapper
+  File "h5py/_objects.pyx", line 55, in h5py._objects.with_phil.wrapper
+  File "h5py/h5f.pyx", line 102, in h5py.h5f.open
+FileNotFoundError: [Errno 2] Unable to synchronously open file (unable to open file: name = './data/fairface_latent_stratified.hdf5', errno = 2, error message = 'No such file or directory', flags = 0, o_flags = 0)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/ozanbayiz/irve/src/main.py", line 44, in main
+    trainer.run()
+    ~~~~~~~~~~~^^
+  File "/home/ozanbayiz/irve/src/trainers/sae_trainer.py", line 147, in run
+    self._setup()       # Setup components
+    ~~~~~~~~~~~^^
+  File "/home/ozanbayiz/irve/src/trainers/sae_trainer.py", line 32, in _setup
+    self.train_dataset = hydra.utils.instantiate(self.cfg.data, mode='training')
+                         ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ozanbayiz/miniforge3/envs/irve/lib/python3.13/site-packages/hydra/_internal/instantiate/_instantiate2.py", line 226, in instantiate
+    return instantiate_node(
+        config, *args, recursive=_recursive_, convert=_convert_, partial=_partial_
+    )
+  File "/home/ozanbayiz/miniforge3/envs/irve/lib/python3.13/site-packages/hydra/_internal/instantiate/_instantiate2.py", line 347, in instantiate_node
+    return _call_target(_target_, partial, args, kwargs, full_key)
+  File "/home/ozanbayiz/miniforge3/envs/irve/lib/python3.13/site-packages/hydra/_internal/instantiate/_instantiate2.py", line 97, in _call_target
+    raise InstantiationException(msg) from e
+hydra.errors.InstantiationException: Error in call to target 'src.datasets.datasets.FairFaceDataset':
+FileNotFoundError(2, "Unable to synchronously open file (unable to open file: name = './data/fairface_latent_stratified.hdf5', errno = 2, error message = 'No such file or directory', flags = 0, o_flags = 0)")
+full_key: cfg.data
+[2025-04-18 04:10:05,860][__main__][ERROR] - Finishing WandB run with failure status due to error.

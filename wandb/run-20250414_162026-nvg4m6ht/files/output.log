@@ -1,5 +1,0 @@
-Traceback (most recent call last):
-  File "/Users/kapilmalladi/Documents/cs182/cs182_project/sparse_autoencoder.py", line 29, in <module>
-    print(X.shape)
-          ^^^^^^^
-AttributeError: 'list' object has no attribute 'shape'
