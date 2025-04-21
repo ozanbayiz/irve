@@ -54,14 +54,14 @@ def main(cfg: DictConfig) -> None:
         raise e # Or handle differently, e.g., exit(1)
 
     finally:
-        # Ensure WandB run is finished cleanly if it was initialized and no error occurred during run
-        # (or if the error happened *after* trainer.run() completed)
-        if hasattr(trainer, 'wandb_run') and trainer.wandb_run and wandb.run is not None:
-             if wandb.run.exit_code == 0 or wandb.run.exit_code is None : # Check if not already finished with error
-                log.info("Finishing WandB run cleanly.")
-                wandb.finish()
-             else:
-                 log.warning(f"WandB run already finished with exit code: {wandb.run.exit_code}")
+        # --- WandB Finalization ---
+        # Ensure WandB run finishes cleanly, regardless of trainer success/failure
+        if wandb.run is not None:
+            log.info("Finishing WandB run...")
+            # Let wandb.finish handle the exit code based on exceptions
+            wandb.finish()
+            log.info("WandB run finished.")
+        # Potentially other cleanup code here
 
 
 if __name__ == "__main__":

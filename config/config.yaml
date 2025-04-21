@@ -2,9 +2,9 @@
 # Main configuration entry point
 
 defaults:
-  - model: sparse_autoencoder
-  - data: fairface_no_labels
-  - trainer: sae # This now brings in the class and its HPs
+  - model: linear_probe
+  - data: fairface_labels
+  - trainer: linear_probe_trainer # This now brings in the class and its HPs
   # Optional overrides can be placed in a separate file (e.g., local.yaml)
   # and added to the defaults list:
   # - override local # Keep sensitive info like API keys out of main config
@@ -19,7 +19,7 @@ output_root: ${oc.env:SCRATCH,${project_root}/outputs}
 
 # --- WandB Settings ---
 wandb:
-  project: "irve-hydra-refactor" # Default project name
+  project: "irve-linear-probes" # Default project name
   entity: null # Set your WandB entity via env var (WANDB_ENTITY) or here
   log_config: True
   log_model: True # Save final model checkpoint as wandb artifact

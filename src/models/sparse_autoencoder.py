@@ -16,16 +16,9 @@ class SparseAutoencoder(nn.Module):
             nn.Linear(input_size, hidden_size),
             nn.ReLU()
         )
-        self.decoder = nn.Sequential(
-            nn.Linear(hidden_size, input_size),
-            # Using Identity as activation depends on the reconstruction loss used (e.g., MSE)
-            # If using BCEWithLogitsLoss, might need nn.Sigmoid() here,
-            # but usually loss handles the final activation.
-            nn.Identity()
-        )
+        self.decoder = nn.Linear(hidden_size, input_size)
         self.input_size = input_size
         self.hidden_size = hidden_size
-        # Removed training parameters like batch_size, lr, l1, criterion, optimizer
 
     def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         """
@@ -54,7 +47,3 @@ class SparseAutoencoder(nn.Module):
         """Decodes the latent representation."""
         z = self.decoder(z)
         return z
-
-# Removed train_autoencoder function
-# Removed main function and @hydra.main decorator
-# Removed save_parameters method 

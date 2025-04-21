@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
+from torch.cuda.amp import GradScaler, autocast
 from omegaconf import DictConfig
 import hydra
 import wandb
@@ -23,7 +24,9 @@ class ProbeTrainer(BaseTrainer):
                   num_epochs: int,
                   # Optional Standard HPs
                   num_workers: int = 0,
-                  pin_memory: bool = True
+                  pin_memory: bool = True,
+                  # Add AMP flag
+                  use_amp: bool = True
                  ):
         super().__init__(cfg)
         self.cfg = cfg # Store full config
@@ -34,6 +37,9 @@ class ProbeTrainer(BaseTrainer):
         self.num_epochs = num_epochs
         self.num_workers = num_workers
         self.pin_memory = pin_memory and (self.device != torch.device('cpu')) # Adjust pin_memory
+        # Store AMP setting
+        self.use_amp = use_amp and (self.device != torch.device('cpu')) # AMP only works on CUDA
+
 
         # Initialize other attributes
         self.model = None
@@ -44,6 +50,8 @@ class ProbeTrainer(BaseTrainer):
         self.train_dataset = None
         self.val_dataset = None
         self.tasks = self._determine_tasks() # Determine tasks based on cfg
+        # Initialize GradScaler if using AMP
+        self.scaler = GradScaler(enabled=self.use_amp)
 
 
     def _determine_tasks(self) -> list[str]:
@@ -61,6 +69,8 @@ class ProbeTrainer(BaseTrainer):
     def _setup(self):
         """Instantiate model, optimizer, criterion, datasets, dataloaders."""
         log.info("Setting up Probe Trainer components...")
+        if self.use_amp:
+            log.info("Automatic Mixed Precision (AMP) enabled.")
 
         # --- Data ---
         log.info(f"Instantiating dataset {self.cfg.data._target_} with return_labels={self.cfg.data.return_labels}")
@@ -186,36 +196,52 @@ class ProbeTrainer(BaseTrainer):
                 log.warning(f"Train: Batch missing labels. Expected {self.tasks}, got {list(labels_dict.keys())}. Skipping.")
                 continue
 
+            # Common forward pass (potentially under autocast)
             try:
-                model_outputs = self.model(features)
-                if not isinstance(model_outputs, tuple) or len(model_outputs) != len(self.tasks):
-                    raise TypeError(f"Model output mismatch. Expected Tuple length {len(self.tasks)}, got {type(model_outputs)} len {len(model_outputs)}")
+                # Use autocast for the forward pass
+                with autocast(enabled=self.use_amp):
+                    model_outputs = self.model(features)
+                    if not isinstance(model_outputs, tuple) or len(model_outputs) != len(self.tasks):
+                        raise TypeError(f"Model output mismatch. Expected Tuple length {len(self.tasks)}, got {type(model_outputs)} len {len(model_outputs)}")
             except Exception as e:
                 log.exception(f"Train: Error during model forward pass: {e}")
                 continue
 
-            num_active_tasks = len(self.tasks)
+            # Process each task's loss and backward pass
+            # num_active_tasks = len(self.tasks) # No longer needed for retain_graph
             for i, task in enumerate(self.tasks):
                 if task not in self.optimizers: continue
 
                 optimizer = self.optimizers[task]
+                optimizer.zero_grad() # Zero grad specific optimizer before calculating its loss
+
                 try:
-                    preds = model_outputs[i]
-                    labels = device_labels[task]
+                    # Use autocast context manager around loss calculation as well
+                    with autocast(enabled=self.use_amp):
+                        preds = model_outputs[i]
+                        labels = device_labels[task]
+                        loss = self.criterion(preds, labels)
+
+                    # Scale the loss and compute gradients
+                    self.scaler.scale(loss).backward() # Remove retain_graph
+
+                    # Unscale gradients and step optimizer
+                    self.scaler.step(optimizer)
+
+                    # Update the scale for next iteration - crucial step
+                    self.scaler.update()
+
+                    if task in task_losses: # Ensure task exists if loop continues after error
+                        task_losses[task] += loss.item()
+
                 except (IndexError, KeyError) as e:
                     log.error(f"Train: Error accessing preds/labels for task '{task}': {e}")
                     continue
-
-                optimizer.zero_grad()
-                loss = self.criterion(preds, labels)
-                retain = (i < num_active_tasks - 1)
-                try:
-                    loss.backward(retain_graph=retain)
-                    optimizer.step()
-                    if task in task_losses: # Ensure task exists if loop continues after error
-                        task_losses[task] += loss.item()
                 except RuntimeError as e:
-                    log.exception(f"Train: Runtime error backward/step task '{task}': {e}")
+                    log.exception(f"Train: Runtime error during backward/step for task '{task}': {e}")
+                    # Consider zeroing grad again if one task fails? Or just skip batch?
+                    # optimizer.zero_grad() # Optional: Reset gradients if error occurred mid-task processing
+                    continue # Skip to next task or batch if one task fails
 
 
         log_data = {"epoch": epoch + 1}
@@ -257,40 +283,60 @@ class ProbeTrainer(BaseTrainer):
                 total_samples += batch_size
 
                 try:
-                    model_outputs = self.model(features)
-                    if not isinstance(model_outputs, tuple) or len(model_outputs) != len(self.tasks):
-                         raise TypeError(f"Val: Model output mismatch. Expected Tuple length {len(self.tasks)}, got {type(model_outputs)} len {len(model_outputs)}")
+                    # Use autocast for the forward pass during validation
+                    with autocast(enabled=self.use_amp):
+                        model_outputs = self.model(features)
+                        if not isinstance(model_outputs, tuple) or len(model_outputs) != len(self.tasks):
+                             raise TypeError(f"Val: Model output mismatch. Expected Tuple length {len(self.tasks)}, got {type(model_outputs)} len {len(model_outputs)}")
+
+                        # Calculate losses within the autocast context
+                        batch_task_losses = {}
+                        for i, task in enumerate(self.tasks):
+                            if task in device_labels:
+                                preds = model_outputs[i]
+                                labels = device_labels[task]
+                                loss = self.criterion(preds, labels)
+                                batch_task_losses[task] = loss.item()
+                            else:
+                                log.warning(f"Val: Missing label for task '{task}' in batch, loss not calculated.")
+
 
                 except Exception as e:
-                    log.exception(f"Val: Error during model forward pass: {e}")
+                    log.exception(f"Val: Error during model forward pass or loss calculation: {e}")
                     continue
 
+                # Accumulate losses and calculate accuracy (outside autocast)
                 for i, task in enumerate(self.tasks):
+                    if task in batch_task_losses:
+                        task_losses[task] += batch_task_losses[task] * batch_size # Accumulate total loss
+
+                    # Calculate accuracy using full precision outputs if needed,
+                    # but max operation is usually safe with autocast outputs
                     try:
-                        preds = model_outputs[i]
+                        preds = model_outputs[i] # These might be FP16 if AMP is active
                         labels = device_labels[task]
+                        _, predicted_labels = torch.max(preds, 1)
+                        if task in task_correct: # Check task exists
+                            task_correct[task] += (predicted_labels == labels).sum().item()
                     except (IndexError, KeyError) as e:
-                         log.error(f"Val: Error accessing preds/labels for task '{task}': {e}")
+                         log.error(f"Val: Error accessing preds/labels for accuracy calculation task '{task}': {e}")
                          continue
 
-                    loss = self.criterion(preds, labels)
-                    if task in task_losses: # Check task exists
-                        task_losses[task] += loss.item() * batch_size # Accumulate total loss
-
-                    # Calculate accuracy
-                    _, predicted_labels = torch.max(preds, 1)
-                    if task in task_correct: # Check task exists
-                        task_correct[task] += (predicted_labels == labels).sum().item()
 
         log_data = {"epoch": epoch + 1}
         log_str = f"Epoch {epoch+1} Val:"
         if total_samples > 0:
             for task in self.tasks:
-                 avg_loss = task_losses.get(task, 0) / total_samples
-                 accuracy = (task_correct.get(task, 0) / total_samples * 100)
+                 # Handle case where task might not have been processed if errors occurred
+                 avg_loss = task_losses.get(task, 0) / total_samples if task in task_losses else float('nan')
+                 accuracy = (task_correct.get(task, 0) / total_samples * 100) if task in task_correct else float('nan')
                  log_data[f"val/{task}_loss"] = avg_loss
                  log_data[f"val/{task}_accuracy"] = accuracy
-                 log_str += f" {task}_loss={avg_loss:.4f} {task}_acc={accuracy:.2f}%"
+                 # Format output nicely, handle potential NaN
+                 loss_str = f"{avg_loss:.4f}" if not torch.isnan(torch.tensor(avg_loss)) else "NaN"
+                 acc_str = f"{accuracy:.2f}%" if not torch.isnan(torch.tensor(accuracy)) else "NaN"
+                 log_str += f" {task}_loss={loss_str} {task}_acc={acc_str}"
+
         else:
              log_str += " No samples processed."
 
@@ -303,43 +349,59 @@ class ProbeTrainer(BaseTrainer):
         """Main execution method for the ProbeTrainer."""
         try:
             self._setup_wandb()
+            # Add use_amp=self.use_amp to wandb config logging if desired
+            if self.wandb_run:
+                 wandb.config.update({"use_amp": self.use_amp}, allow_val_change=True)
             self._setup()
         except Exception as e:
              log.exception("Setup failed. Aborting run.")
-             return
+             if self.wandb_run:
+                  wandb.finish(exit_code=1) # Ensure wandb finishes on setup failure
+             return # Added return
 
         # Use self.num_epochs instance attribute
         log.info(f"Starting probe training for tasks: {self.tasks}, Epochs: {self.num_epochs}...")
         start_time = time.time()
 
-        for epoch in range(self.num_epochs): # Use instance attribute
-            epoch_start_time = time.time()
-            log.info(f"--- Starting Epoch {epoch+1}/{self.num_epochs} ---")
-            self._train_epoch(epoch)
-            self._validate_epoch(epoch)
-            epoch_duration = time.time() - epoch_start_time
-            log.info(f"--- Epoch {epoch+1} finished in {epoch_duration:.2f}s ---")
+        try: # Wrap training loop in try/finally for wandb finish
+            for epoch in range(self.num_epochs): # Use instance attribute
+                epoch_start_time = time.time()
+                log.info(f"--- Starting Epoch {epoch+1}/{self.num_epochs} ---")
+                self._train_epoch(epoch)
+                self._validate_epoch(epoch)
+                epoch_duration = time.time() - epoch_start_time
+                log.info(f"--- Epoch {epoch+1} finished in {epoch_duration:.2f}s ---")
 
-        total_duration = time.time() - start_time
-        log.info(f"Training finished in {total_duration:.2f}s.")
+            total_duration = time.time() - start_time
+            log.info(f"Training finished in {total_duration:.2f}s.")
 
-        try:
-            # Determine input dim for saving checkpoint
-            input_dim_saved = -1
-            if hasattr(self.model, 'age_classifier'):
-                input_dim_saved = self.model.age_classifier.in_features
-            elif hasattr(self.model, 'gender_classifier'):
-                 input_dim_saved = self.model.gender_classifier.in_features
-            elif hasattr(self.model, 'race_classifier'):
-                 input_dim_saved = self.model.race_classifier.in_features
+            try:
+                # Determine input dim for saving checkpoint
+                input_dim_saved = -1
+                if hasattr(self.model, 'age_classifier'):
+                    input_dim_saved = self.model.age_classifier.in_features
+                elif hasattr(self.model, 'gender_classifier'):
+                     input_dim_saved = self.model.gender_classifier.in_features
+                elif hasattr(self.model, 'race_classifier'):
+                     input_dim_saved = self.model.race_classifier.in_features
 
-            # Use self.num_epochs instance attribute
-            self._save_checkpoint(
-                filename="probes_final.pth",
-                is_final=True,
-                epoch=self.num_epochs,
-                input_dim=input_dim_saved,
-                tasks=self.tasks
-            )
-        except Exception as e:
-             log.exception("Failed to save final checkpoint.")
+                # Use self.num_epochs instance attribute
+                self._save_checkpoint(
+                    filename="probes_final.pth",
+                    is_final=True,
+                    epoch=self.num_epochs,
+                    input_dim=input_dim_saved,
+                    tasks=self.tasks
+                )
+            except Exception as e:
+                 log.exception("Failed to save final checkpoint.")
+
+        except Exception as e: # Catch exceptions during training loop
+             log.exception(f"Exception occurred during training loop: {e}")
+             # Optionally save a checkpoint on error?
+             if self.wandb_run:
+                 wandb.finish(exit_code=1) # Mark run as failed
+             raise # Re-raise exception after logging and finishing wandb
+        finally: # Ensure wandb finishes even if training completes normally
+             if self.wandb_run and wandb.run is not None: # Check if wandb run active
+                 wandb.finish() # Ensure wandb finishes cleanly
