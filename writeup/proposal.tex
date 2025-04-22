@@ -1,6 +1,27 @@
 \documentclass{article}
 
-\usepackage{arxiv}
+
+% if you need to pass options to natbib, use, e.g.:
+%     \PassOptionsToPackage{numbers, compress}{natbib}
+% before loading neurips_2023
+
+
+% ready for submission
+% \usepackage{neurips_2023}
+
+
+% to compile a preprint version, e.g., for submission to arXiv, add add the
+% [preprint] option:
+%     \usepackage[preprint]{neurips_2023}
+
+
+% to compile a camera-ready version, add the [final] option, e.g.:
+\usepackage[final]{neurips_2023}
+
+
+% to avoid loading the natbib package, add option nonatbib:
+% \usepackage[nonatbib]{neurips_2023}
+
 
 \usepackage[utf8]{inputenc} % allow utf-8 input
 \usepackage[T1]{fontenc}    % use 8-bit T1 fonts
@@ -10,72 +31,154 @@
 \usepackage{amsfonts}       % blackboard math symbols
 \usepackage{nicefrac}       % compact symbols for 1/2, etc.
 \usepackage{microtype}      % microtypography
-\usepackage{cleveref}       % smart cross-referencing
-\usepackage{lipsum}         % Can be removed after putting your text content
-\usepackage{graphicx}
-\usepackage{natbib}
-\usepackage{doi}
+\usepackage{xcolor}         % colors
+\usepackage{amsmath}   
 
-\title{Influencing Racial Classifications from ViTs Using Sparse Dictionary Features}
 
-\newif\ifuniqueAffiliation
-% Comment to use multiple affiliations variant of author block 
-\uniqueAffiliationtrue
 
-\ifuniqueAffiliation % Standard variant of author block
-\author{ Ozan Bayiz \\
-	\texttt{ozanbayiz@berkeley.edu} \\
-	%% examples of more authors
-	\And
-	Kapil Malladi \\
-	\texttt{kapilmalladi@berkeley.edu} \\
-	\AND
-	Charlie Cooper \\
-	\texttt{charlie.c@berkeley.edu} \\
-	\And
-	Raiyan Hammad Ausaf \\
-	\texttt{raiyanausaf14@berkeley.edu} \\
+\title{Isolating Racial Semantics in a Vision Transformer Using Semi-Supervised Sparse Autoencoders}
+
+
+% The \author macro works with any number of authors. There are two commands
+% used to separate the names and addresses of multiple authors: \And and \AND.
+%
+% Using \And between authors leaves it to LaTeX to determine where to break the
+% lines. Using \AND forces a line break at that point. So, if LaTeX puts 3 of 4
+% authors names on the first line, and the last on the second line, try using
+% \AND instead of \And before the third author name.
+
+
+\author{
+  Ozan Bayiz\\
+  \texttt{ozanbayiz@berkeley.edu} \\
+  % examples of more authors
+  \And
+  Kapil Malladi \\
+  \texttt{kapilmalladi@berkeley.edu} \\
+  \AND
+  Charlie Cooper\\
+  \texttt{charlie.c@berkeley.edu} \\
+  \And
+  Raiyan Hammad Ausaf \\
+  \texttt{raiyanausaf14@berkeley.edu} \\
+  % \And
+  % Coauthor \\
+  % Affiliation \\
+  % Address \\
+  % \texttt{email} \\
 }
-
-% Uncomment to override  the `A preprint' in the header
-\renewcommand{\headeright}{}
-\renewcommand{\undertitle}{}
-\renewcommand{\shorttitle}{}
-
 
 
 \begin{document}
+
+
 \maketitle
 
+
 \begin{abstract}
-We need more GPUs.
+We investigate how racial semantics are encoded in the latent representations of a Vision Transformer (ViT), extending recent work on sparse autoencoder (SAE) analysis of large language models (LLM) by Cunningham et al.\ [1] and the GG Claude project [2]. Prior research has used unsupervised SAEs to retrospectively uncover human-interpretable features through various methods  (CORRESPONDING SECTION OF GGC)[5], including OpenAI's AutoInterpretability scores for LLMs (Bills, S., et al.)[4]. These scores are ill-suited for our vision task. We diverge from the two previous research efforts by specifying our semantic feature of interest—race—\textit{before} using an SAE to learn the SDFs. We begin by applying an SAE to final-layer ViT activations and visualizing the SDFs using dimensionality reduction. Due to insufficient separation by race, we pursue two approaches: (1) training a semi-supervised SAE with an auxiliary classification loss for race, and (2) modeling class-wise latent distributions and perturbing representations along inter-class “race vectors.” These perturbations are used to test causal influence on predictions, which we further validate with activation patching. Our findings offer a pathway toward more targeted interpretability methods in vision models, with implications for fairness and representation auditing.
 \end{abstract}
 
 
-\section{"Coherent Story" Justifying our "Systematic Investigation"}
-In recent interpretability i
+\section{Introduction}
+Understanding how sensitive attributes like race are encoded in neural network representations is central to ongoing discussions about fairness, transparency, and interpretability in machine learning. While prior work in large language models (LLMs) has used Sparse Autoencoders (SAEs) to uncover human-interpretable latent features, applications to vision models remain underexplored. This project investigates whether race-related features are encoded in the latent space of a Vision Transformer (ViT), and whether these features can be isolated using either architectural modifications or systematic post hoc analysis.
+
+
+\section{Related Work}
+This work builds on several lines of research. Cunningham et al. [1] and the GG Claude project [2] apply SAEs to LLM activations, interpreting learned dictionary features retrospectively. These efforts are motivated by the superposition hypothesis [3], which argues that human-interpretable concepts are entangled across features in latent space. Recent works have explored ways to disentangle these through post hoc probes and feature attribution [4].
+
+However, most of these methods are fully unsupervised and do not target a specific semantic concept in advance. Our project diverges by taking a semi-supervised route, explicitly focusing on racial attributes in ViT embeddings and seeking to isolate dictionary features that encode these semantics.
+
+\section{Problem Statement}
+We aim to determine whether racial information is embedded in the latent space of a ViT and, if so, whether it can be disentangled and manipulated. Specifically, we ask:
+\begin{enumerate}
+\item Can semi-supervised SAEs meaningfully change the sparse dictionary features (SDFs) to be sensitive to a predetermined concept?
+\item Can we construct interpretable directions in the SAE latent space that correspond to transitions between racial categories?
+\item Do these directions causally affect race classification predictions when applied as perturbations?
+\end{enumerate}
+
+\section{Approach}
+We first trained a standard Sparse Autoencoder (SAE) on the output of the final layer of the visual encoder block of a ViT. These representations were projected into 2D using PCA, UMAP, and t-SNE to assess clustering by race.
+$$\text{INSERT IMAGES OF PCA, t-SNE \& UMAP}$$
+
+Initial results showed little structure when colored by race label, suggesting that unsupervised SDFs may not align with our feature of interest. We then pursued two strategies:
+
+\subsection{Semi-Supervised SAE}
+We defined a new loss function:
+\[
+L(x, y) = \text{reconstruction loss}(x, \hat{x}) + \alpha \cdot \text{label loss}(\text{classify}(\text{enc}(x)), y)
+\]
+Where $x$ is the vision encoder output activation and $y$ is the race label. This encourages the encoder to generate compressed representations predictive of racial class labels while preserving reconstruction quality.
+
+\subsection{Alternative Analysis of SDFs}
+We propose a new statistical procedure:
+\begin{itemize}
+\item Model each race’s encoded representations as multivariate Gaussians.
+\item If clusters aren't sufficiently disparate, we identify low-variance dimensions within each class to select stable, race-distinctive features by zeroing out high-variance entries.
+\item Define “race vectors” as directions between class means in this subspace, including from/to a “neutral race” (centroid of means).
+\item Perturb encoded activations along these race vectors and evaluate changes in classifier prediction and confidence.
+\end{itemize}
+
+\section{Preliminary Results and Findings}
+Dimensionality reduction visualizations (PCA, UMAP, t-SNE) show limited race-based clustering in the raw SAE outputs.
+
+Variance-based filtering reveals promising feature subsets where some SDFs show low intra-class variance and high inter-class separation.
+
+Next steps include computing race vector perturbations and visualizing their effect on classification outcomes.
+
+We also plan to use activation patching to validate whether modifying these directions causally influences downstream race classification behavior.
 
 
 
 
-\section{Method}
-\subsection{Linear Probe}
-\subsection{SAE}
-\subsection{Collect Stats}
-Table and visualization of the means in latent vector space
-\subsection{Intervene}
-%What becomes an interesting question is how moving in the latent space truly affects the racial classification. It seems entirely plausible that moving along a vector defined between white and asian could bring the classification closer to Black. Or the average activation (of all racial means) being actually classified as Black or Indian, etc. due to proximity to the mean. If I am understanding this correctly, we will still be able to do a sanity check based on classifying the mean activations of each race ( I really hope that works)
 
 
-\section{Components}
-\subsection{Florence-2}
-\subsection{SAE}
-\subsection{Fairface}
+\begin{figure}
+  \centering
+  \fbox{\rule[-.5cm]{0cm}{4cm} \rule[-.5cm]{4cm}{0cm}}
+  \caption{Sample figure caption.}
+\end{figure}
+
+
+\subsection{Tables}
+
+
+\begin{table}
+  \caption{Sample table title}
+  \label{sample-table}
+  \centering
+  \begin{tabular}{lll}
+    \toprule
+    \multicolumn{2}{c}{Part}                   \\
+    \cmidrule(r){1-2}
+    Name     & Description     & Size ($\mu$m) \\
+    \midrule
+    Dendrite & Input terminal  & $\sim$100     \\
+    Axon     & Output terminal & $\sim$10      \\
+    Soma     & Cell body       & up to $10^6$  \\
+    \bottomrule
+  \end{tabular}
+\end{table}
 
 
 
-\bibliographystyle{unsrtnat}
-\bibliography{references}  %%% Uncomment this line and comment out the ``thebibliography'' section below to use the external .bib file (using bibtex) .
+
+\section*{References}
+{\small
+
+[1] Cunningham, H., Ewart, A., Riggs, L., Huben, R., \& Sharkey, L. (2023). Sparse autoencoders find highly interpretable features in language models. EleutherAI, MATS, Bristol AI Safety Centre, Apollo Research. Retrieved from \url{https://transformer-circuits.pub/2023/monosemantic-features/index.html}
+
+[2] GG Claude Project. (2024). [Title TBD or leave blank]. [Institution, if known].
+
+[3] Elhage, N., Nanda, N., Olsson, C., Henighan, T., Joseph, N., Chen, A., ... \& Amodei, D. (2022). A Mathematical Framework for Transformer Circuits. Transformer Circuits. Retrieved from \url{https://transformer-circuits.pub/2022/toy_model/index.html}
+
+[4] Bills, S., Cammarata, N., Mossing, D., Tillman, H., Gao, L., Goh, G., Sutskever, I., Leike, J., Wu, J., \& Saunders, W. (2023, May 9). Language models can explain neurons in language models. OpenAI. Retrieved from \url{https://www.openai.com/research/language-models-can-explain-neurons}
+
+[5] [Corresponding section of GG Claude project analysis]. [Include author(s) or institution if known, or leave as placeholder for now.]
+
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
 \end{document}

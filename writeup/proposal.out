@@ -1,10 +1,8 @@
-\BOOKMARK [1][-]{section.1}{"Coherent Story" Justifying our "Systematic Investigation"}{}% 1
-\BOOKMARK [1][-]{section.2}{Method}{}% 2
-\BOOKMARK [2][-]{subsection.2.1}{Linear Probe}{section.2}% 3
-\BOOKMARK [2][-]{subsection.2.2}{SAE}{section.2}% 4
-\BOOKMARK [2][-]{subsection.2.3}{Collect Stats}{section.2}% 5
-\BOOKMARK [2][-]{subsection.2.4}{Intervene}{section.2}% 6
-\BOOKMARK [1][-]{section.3}{Components}{}% 7
-\BOOKMARK [2][-]{subsection.3.1}{Florence-2}{section.3}% 8
-\BOOKMARK [2][-]{subsection.3.2}{SAE}{section.3}% 9
-\BOOKMARK [2][-]{subsection.3.3}{Fairface}{section.3}% 10
+\BOOKMARK [1][-]{section.1}{Introduction}{}% 1
+\BOOKMARK [1][-]{section.2}{Related Work}{}% 2
+\BOOKMARK [1][-]{section.3}{Problem Statement}{}% 3
+\BOOKMARK [1][-]{section.4}{Approach}{}% 4
+\BOOKMARK [2][-]{subsection.4.1}{Semi-Supervised SAE}{section.4}% 5
+\BOOKMARK [2][-]{subsection.4.2}{Alternative Analysis of SDFs}{section.4}% 6
+\BOOKMARK [1][-]{section.5}{Preliminary Results and Findings}{}% 7
+\BOOKMARK [2][-]{subsection.5.1}{Tables}{section.5}% 8
