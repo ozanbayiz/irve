@@ -16,7 +16,7 @@
 \usepackage{natbib}
 \usepackage{doi}
 
-\title{Investigating Racial Semantics in Vision Transformer Representations Using FairFace}
+\title{Influencing Racial Classifications from ViTs Using Sparse Dictionary Features}
 
 \newif\ifuniqueAffiliation
 % Comment to use multiple affiliations variant of author block 
@@ -53,7 +53,7 @@ We need more GPUs.
 
 
 \section{"Coherent Story" Justifying our "Systematic Investigation"}
-Recent high-profile failures of commercial vision systems — most notably the infamous Google Photos misclassification of Black individuals as “gorillas” — underscore the need for racial interpretability in deep learning models. Despite improvements in classification accuracy, modern vision systems often lack transparency in how sensitive attributes like race are internally represented. Our project aims to identify these ideas within a ViT model, and discover key features used by the model for classifying race. We use modern methods of mechanistic interpretability, such as sparse autoencoders and the superposition hypotheses to come up with, and empirically back, hypotheses.
+In recent interpretability i
 
 
 
@@ -64,7 +64,7 @@ Recent high-profile failures of commercial vision systems — most notably the i
 \subsection{Collect Stats}
 Table and visualization of the means in latent vector space
 \subsection{Intervene}
-What becomes an interesting question is how moving in the latent space truly affects the racial classification. It seems entirely plausible that moving along a vector defined between white and asian could bring the classification closer to Black. Or the average activation (of all racial means) being actually classified as Black or Indian, etc. due to proximity to the mean. If I am understanding this correctly, we will still be able to do a sanity check based on classifying the mean activations of each race ( I really hope that works)
+%What becomes an interesting question is how moving in the latent space truly affects the racial classification. It seems entirely plausible that moving along a vector defined between white and asian could bring the classification closer to Black. Or the average activation (of all racial means) being actually classified as Black or Indian, etc. due to proximity to the mean. If I am understanding this correctly, we will still be able to do a sanity check based on classifying the mean activations of each race ( I really hope that works)
 
 
 \section{Components}
