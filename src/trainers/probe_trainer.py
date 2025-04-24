@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from torch.cuda.amp import GradScaler
 from torch.utils.data import DataLoader
 from omegaconf import DictConfig
 import hydra
