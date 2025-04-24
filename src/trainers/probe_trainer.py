@@ -2,17 +2,15 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
-from torch.cuda.amp import GradScaler, autocast
 from omegaconf import DictConfig
 import hydra
 import wandb
 import logging
 import os
 import time
-from .base_trainer import BaseTrainer # Assuming BaseTrainer exists
-# Import dataset_worker_init_fn if defined in datasets module
+from .base_trainer import BaseTrainer
 from src.datasets.datasets import dataset_worker_init_fn
-import torch.amp # Import top-level amp
+import torch.amp
 
 log = logging.getLogger(__name__)
 
