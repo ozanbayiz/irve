@@ -103,7 +103,7 @@ class ProbeTrainer(BaseTrainer):
             else: # Should not happen if tasks are requested
                 raise ValueError("Dataset did not return expected (features, labels_dict) tuple.")
 
-            input_dim = sample_features.shape[0]
+            input_dim = sample_features.shape[1] # TODO: Change back in due time ######################
             log.info(f"Determined input dimension: {input_dim}")
             if self.wandb_run:
                 wandb.config.update({"input_dim": input_dim}, allow_val_change=True)
