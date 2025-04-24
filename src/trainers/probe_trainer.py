@@ -12,6 +12,7 @@ import time
 from .base_trainer import BaseTrainer # Assuming BaseTrainer exists
 # Import dataset_worker_init_fn if defined in datasets module
 from src.datasets.datasets import dataset_worker_init_fn
+import torch.amp # Import top-level amp
 
 log = logging.getLogger(__name__)
 
@@ -52,6 +53,8 @@ class ProbeTrainer(BaseTrainer):
         self.tasks = self._determine_tasks() # Determine tasks based on cfg
         # Initialize GradScaler if using AMP
         self.scaler = GradScaler(enabled=self.use_amp)
+        # Track best race validation loss
+        self.best_race_val_loss = float('inf')
 
 
     def _determine_tasks(self) -> list[str]:
@@ -103,8 +106,15 @@ class ProbeTrainer(BaseTrainer):
             else: # Should not happen if tasks are requested
                 raise ValueError("Dataset did not return expected (features, labels_dict) tuple.")
 
-            input_dim = sample_features.shape[1] # TODO: Change back in due time ######################
-            log.info(f"Determined input dimension: {input_dim}")
+            # Corrected input dimension calculation assuming pooling will happen
+            if sample_features.dim() == 3:
+                 input_dim = sample_features.shape[2] # Use the last dimension if pooling [B, S, E] -> E
+            elif sample_features.dim() == 2:
+                 input_dim = sample_features.shape[1] # Use the feature dim if already [B, E]
+            else:
+                raise ValueError(f"Unexpected feature dimension {sample_features.dim()} in first sample.")
+
+            log.info(f"Determined input dimension for probes: {input_dim}")
             if self.wandb_run:
                 wandb.config.update({"input_dim": input_dim}, allow_val_change=True)
         except Exception as e:
@@ -148,7 +158,7 @@ class ProbeTrainer(BaseTrainer):
 
             self.model = hydra.utils.instantiate(
                 self.cfg.model,
-                input_dim=input_dim,
+                input_dim=input_dim, # Use the determined input_dim after potential pooling
                 # Pass class numbers explicitly from model config
                 age_classes=get_class_count('age'),
                 gender_classes=get_class_count('gender'),
@@ -169,6 +179,10 @@ class ProbeTrainer(BaseTrainer):
              classifier_attr_name = f"{task}_classifier"
              if hasattr(self.model, classifier_attr_name):
                  classifier_module = getattr(self.model, classifier_attr_name)
+                 # Check if input dimension matches the determined dimension
+                 if hasattr(classifier_module, 'in_features') and classifier_module.in_features != input_dim:
+                     log.warning(f"Classifier '{classifier_attr_name}' in_features ({classifier_module.in_features}) != determined input_dim ({input_dim}).")
+                     # Optionally raise error or attempt to resize? For now, just warn.
                  self.optimizers[task] = optim.Adam(classifier_module.parameters(), lr=lr) # Use standard lr name here
                  log.info(f"Created Adam optimizer for task '{task}' (lr={lr})")
              else:
@@ -217,8 +231,8 @@ class ProbeTrainer(BaseTrainer):
 
             # Common forward pass (potentially under autocast)
             try:
-                # Use autocast for the forward pass
-                with autocast(enabled=self.use_amp):
+                # Use updated torch.amp.autocast syntax
+                with torch.amp.autocast(device_type=self.device.type, enabled=self.use_amp):
                     model_outputs = self.model(features) # Now features should be [B, E]
                     if not isinstance(model_outputs, tuple) or len(model_outputs) != len(self.tasks):
                         raise TypeError(f"Model output mismatch. Expected Tuple length {len(self.tasks)}, got {type(model_outputs)} len {len(model_outputs)}")
@@ -236,8 +250,8 @@ class ProbeTrainer(BaseTrainer):
                 optimizer.zero_grad() # Zero grad specific optimizer before calculating its loss
 
                 try:
-                    # Use autocast context manager around loss calculation as well
-                    with autocast(enabled=self.use_amp):
+                    # Use updated torch.amp.autocast syntax around loss calculation as well
+                    with torch.amp.autocast(device_type=self.device.type, enabled=self.use_amp):
                         preds = model_outputs[i]
                         labels = device_labels[task]
                         loss = self.criterion(preds, labels)
@@ -311,6 +325,7 @@ class ProbeTrainer(BaseTrainer):
         # Initialize storage for confusion matrix data
         all_preds = {task: [] for task in self.tasks}
         all_labels = {task: [] for task in self.tasks}
+        current_epoch_losses = {task: float('nan') for task in self.tasks} # Store epoch avg losses
 
         with torch.no_grad():
             for batch_data in self.val_loader:
@@ -340,8 +355,8 @@ class ProbeTrainer(BaseTrainer):
                 # --------------------------
 
                 try:
-                    # Use autocast for the forward pass during validation
-                    with autocast(enabled=self.use_amp):
+                    # Use updated torch.amp.autocast syntax for validation forward pass
+                    with torch.amp.autocast(device_type=self.device.type, enabled=self.use_amp):
                         model_outputs = self.model(features) # Now features should be [B, E]
                         if not isinstance(model_outputs, tuple) or len(model_outputs) != len(self.tasks):
                              raise TypeError(f"Val: Model output mismatch. Expected Tuple length {len(self.tasks)}, got {type(model_outputs)} len {len(model_outputs)}")
@@ -383,9 +398,11 @@ class ProbeTrainer(BaseTrainer):
                          log.error(f"Val: Error accessing preds/labels for accuracy/CM task '{task}': {e}")
                          continue
 
-        # --- Logging at end of epoch ---
+        # --- Logging and Checkpointing at end of epoch ---
         log_data = {"epoch": epoch + 1}
         log_str = f"Epoch {epoch+1} Val:"
+        current_race_val_loss = float('inf') # Initialize for current epoch check
+
         if total_samples > 0:
             for task in self.tasks:
                  # Calculate average loss and accuracy for the epoch
@@ -393,18 +410,26 @@ class ProbeTrainer(BaseTrainer):
                  accuracy = (task_correct.get(task, 0) / total_samples * 100) if task in task_correct else float('nan')
                  log_data[f"val/{task}_loss"] = avg_loss
                  log_data[f"val/{task}_accuracy"] = accuracy
+                 current_epoch_losses[task] = avg_loss # Store avg loss for checkpointing check
+
                  # Format output nicely, handle potential NaN
                  loss_str = f"{avg_loss:.4f}" if not torch.isnan(torch.tensor(avg_loss)) else "NaN"
                  acc_str = f"{accuracy:.2f}%" if not torch.isnan(torch.tensor(accuracy)) else "NaN"
                  log_str += f" {task}_loss={loss_str} {task}_acc={acc_str}"
+
+            # Get current race loss specifically
+            current_race_val_loss = current_epoch_losses.get('race', float('inf'))
+
         else:
              log_str += " No samples processed."
 
         log.info(log_str)
+
+        # --- WandB Logging and Checkpointing ---
         if self.wandb_run:
              wandb.log(log_data, step=epoch+1)
 
-             # --- Log Confusion Matrices ---
+             # Log Confusion Matrices
              for task in self.tasks:
                   if task in all_preds and all_preds[task] and task in all_labels and all_labels[task]:
                        try:
@@ -432,6 +457,21 @@ class ProbeTrainer(BaseTrainer):
                        except Exception as e:
                             log.error(f"Failed to log confusion matrix for task '{task}': {e}")
 
+        # --- Save Best Race Model Checkpoint ---
+        if 'race' in self.tasks and not torch.isnan(torch.tensor(current_race_val_loss)):
+             if current_race_val_loss < self.best_race_val_loss:
+                  self.best_race_val_loss = current_race_val_loss
+                  log.info(f"*** New best validation loss for 'race': {self.best_race_val_loss:.4f}. Saving checkpoint... ***")
+                  try:
+                       self._save_checkpoint(
+                           filename="best_race_model.pth", # Specific name for best race model
+                           epoch=epoch + 1,
+                           race_val_loss=self.best_race_val_loss # Save the specific loss
+                           # Include other relevant info if needed
+                       )
+                  except Exception as e:
+                       log.exception("Failed to save best race model checkpoint.")
+
 
     def run(self):
         """Main execution method for the ProbeTrainer."""
@@ -458,12 +498,15 @@ class ProbeTrainer(BaseTrainer):
                 self._train_epoch(epoch)
                 self._validate_epoch(epoch)
                 epoch_duration = time.time() - epoch_start_time
-                log.info(f"--- Epoch {epoch+1} finished in {epoch_duration:.2f}s ---")
+                # Include best race loss in epoch log
+                log.info(f"--- Epoch {epoch+1} finished in {epoch_duration:.2f}s (Best Race Val Loss: {self.best_race_val_loss:.4f}) ---")
 
             total_duration = time.time() - start_time
             log.info(f"Training finished in {total_duration:.2f}s.")
 
             try:
+                # Save final model checkpoint
+                log.info("Saving final model checkpoint...")
                 # Determine input dim for saving checkpoint
                 input_dim_saved = -1
                 # Helper to get input dim safely
