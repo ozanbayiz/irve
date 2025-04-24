@@ -142,14 +142,19 @@ class ProbeTrainer(BaseTrainer):
         # --- Model ---
         log.info(f"Instantiating model: {self.cfg.model._target_}")
         try:
+            # Helper function to get class count from config or default to None
+            def get_class_count(task_name):
+                return self.cfg.model.get(f"{task_name}_classes", None)
+
             self.model = hydra.utils.instantiate(
                 self.cfg.model,
                 input_dim=input_dim,
                 # Pass class numbers explicitly from model config
-                age_classes=self.cfg.model.age_classes,
-                gender_classes=self.cfg.model.gender_classes,
-                race_classes=self.cfg.model.race_classes
-                ).to(self.device)
+                age_classes=get_class_count('age'),
+                gender_classes=get_class_count('gender'),
+                race_classes=get_class_count('race')
+                # Add other tasks here if needed, following the pattern
+            ).to(self.device)
             log.info(f"Model '{self.model.__class__.__name__}' instantiated and moved to {self.device}.")
         except Exception as e:
              log.exception(f"Failed to instantiate model {self.cfg.model._target_}")
@@ -180,6 +185,9 @@ class ProbeTrainer(BaseTrainer):
         """Runs one training epoch."""
         self.model.train()
         task_losses = {task: 0.0 for task in self.tasks}
+        # Initialize accumulators for training accuracy
+        task_correct_train = {task: 0 for task in self.tasks}
+        total_samples_train = 0
         num_batches = len(self.train_loader)
 
         for batch_idx, batch_data in enumerate(self.train_loader):
@@ -196,6 +204,8 @@ class ProbeTrainer(BaseTrainer):
                 log.warning(f"Train: Batch missing labels. Expected {self.tasks}, got {list(labels_dict.keys())}. Skipping.")
                 continue
 
+            batch_size_current = features.size(0) # Get current batch size
+
             # Common forward pass (potentially under autocast)
             try:
                 # Use autocast for the forward pass
@@ -208,7 +218,7 @@ class ProbeTrainer(BaseTrainer):
                 continue
 
             # Process each task's loss and backward pass
-            # num_active_tasks = len(self.tasks) # No longer needed for retain_graph
+            batch_correct_counts = {task: 0 for task in self.tasks} # Track batch accuracy locally
             for i, task in enumerate(self.tasks):
                 if task not in self.optimizers: continue
 
@@ -234,23 +244,47 @@ class ProbeTrainer(BaseTrainer):
                     if task in task_losses: # Ensure task exists if loop continues after error
                         task_losses[task] += loss.item()
 
+                    # Calculate batch accuracy (after step)
+                    with torch.no_grad(): # No need for gradients here
+                        _, predicted_labels = torch.max(preds.detach(), 1)
+                        correct_count = (predicted_labels == labels).sum().item()
+                        batch_correct_counts[task] = correct_count # Store batch correct count
+
                 except (IndexError, KeyError) as e:
                     log.error(f"Train: Error accessing preds/labels for task '{task}': {e}")
+                    # Skip accuracy update for this task in this batch
+                    batch_correct_counts.pop(task, None) # Remove task if error
                     continue
                 except RuntimeError as e:
                     log.exception(f"Train: Runtime error during backward/step for task '{task}': {e}")
-                    # Consider zeroing grad again if one task fails? Or just skip batch?
-                    # optimizer.zero_grad() # Optional: Reset gradients if error occurred mid-task processing
+                    # Skip accuracy update for this task in this batch
+                    batch_correct_counts.pop(task, None) # Remove task if error
                     continue # Skip to next task or batch if one task fails
 
+            # Accumulate total samples and correct counts *after* processing all tasks for the batch
+            total_samples_train += batch_size_current
+            for task, count in batch_correct_counts.items():
+                if task in task_correct_train: # Check again in case of earlier error
+                    task_correct_train[task] += count
 
+
+        # --- Logging at end of epoch ---
         log_data = {"epoch": epoch + 1}
         log_str = f"Epoch {epoch+1} Train:"
-        for task in self.tasks:
-            if task in task_losses and num_batches > 0:
-                avg_loss = task_losses[task] / num_batches
+        if total_samples_train > 0: # Check if any samples were processed
+            for task in self.tasks:
+                avg_loss = task_losses.get(task, 0) / num_batches if num_batches > 0 else float('nan')
+                # Use total_samples_train for accuracy calculation
+                accuracy = (task_correct_train.get(task, 0) / total_samples_train * 100)
                 log_data[f"train/{task}_loss"] = avg_loss
-                log_str += f" {task}_loss={avg_loss:.4f}"
+                log_data[f"train/{task}_accuracy"] = accuracy
+                # Format output nicely, handle potential NaN
+                loss_str = f"{avg_loss:.4f}" if not torch.isnan(torch.tensor(avg_loss)) else "NaN"
+                acc_str = f"{accuracy:.2f}%" if not torch.isnan(torch.tensor(accuracy)) else "NaN"
+                log_str += f" {task}_loss={loss_str} {task}_acc={acc_str}"
+        else:
+            log_str += " No samples processed."
+
         log.info(log_str)
         if self.wandb_run:
             wandb.log(log_data, step=epoch+1)
@@ -263,6 +297,9 @@ class ProbeTrainer(BaseTrainer):
         task_correct = {task: 0 for task in self.tasks}
         total_samples = 0
         num_batches = len(self.val_loader)
+        # Initialize storage for confusion matrix data
+        all_preds = {task: [] for task in self.tasks}
+        all_labels = {task: [] for task in self.tasks}
 
         with torch.no_grad():
             for batch_data in self.val_loader:
@@ -300,7 +337,6 @@ class ProbeTrainer(BaseTrainer):
                             else:
                                 log.warning(f"Val: Missing label for task '{task}' in batch, loss not calculated.")
 
-
                 except Exception as e:
                     log.exception(f"Val: Error during model forward pass or loss calculation: {e}")
                     continue
@@ -308,26 +344,31 @@ class ProbeTrainer(BaseTrainer):
                 # Accumulate losses and calculate accuracy (outside autocast)
                 for i, task in enumerate(self.tasks):
                     if task in batch_task_losses:
-                        task_losses[task] += batch_task_losses[task] * batch_size # Accumulate total loss
+                        # Accumulate weighted loss (loss * batch_size)
+                        task_losses[task] += batch_task_losses[task] * batch_size
 
-                    # Calculate accuracy using full precision outputs if needed,
-                    # but max operation is usually safe with autocast outputs
+                    # Calculate accuracy and store preds/labels for confusion matrix
                     try:
                         preds = model_outputs[i] # These might be FP16 if AMP is active
                         labels = device_labels[task]
-                        _, predicted_labels = torch.max(preds, 1)
-                        if task in task_correct: # Check task exists
+                        _, predicted_labels = torch.max(preds.detach(), 1) # Use detach
+
+                        if task in task_correct: # Check task exists before accumulating
                             task_correct[task] += (predicted_labels == labels).sum().item()
+                        if task in all_preds and task in all_labels: # Check task exists before appending
+                            all_preds[task].extend(predicted_labels.cpu().tolist())
+                            all_labels[task].extend(labels.cpu().tolist())
+
                     except (IndexError, KeyError) as e:
-                         log.error(f"Val: Error accessing preds/labels for accuracy calculation task '{task}': {e}")
+                         log.error(f"Val: Error accessing preds/labels for accuracy/CM task '{task}': {e}")
                          continue
 
-
+        # --- Logging at end of epoch ---
         log_data = {"epoch": epoch + 1}
         log_str = f"Epoch {epoch+1} Val:"
         if total_samples > 0:
             for task in self.tasks:
-                 # Handle case where task might not have been processed if errors occurred
+                 # Calculate average loss and accuracy for the epoch
                  avg_loss = task_losses.get(task, 0) / total_samples if task in task_losses else float('nan')
                  accuracy = (task_correct.get(task, 0) / total_samples * 100) if task in task_correct else float('nan')
                  log_data[f"val/{task}_loss"] = avg_loss
@@ -336,13 +377,40 @@ class ProbeTrainer(BaseTrainer):
                  loss_str = f"{avg_loss:.4f}" if not torch.isnan(torch.tensor(avg_loss)) else "NaN"
                  acc_str = f"{accuracy:.2f}%" if not torch.isnan(torch.tensor(accuracy)) else "NaN"
                  log_str += f" {task}_loss={loss_str} {task}_acc={acc_str}"
-
         else:
              log_str += " No samples processed."
 
         log.info(log_str)
         if self.wandb_run:
              wandb.log(log_data, step=epoch+1)
+
+             # --- Log Confusion Matrices ---
+             for task in self.tasks:
+                  if task in all_preds and all_preds[task] and task in all_labels and all_labels[task]:
+                       try:
+                            class_names = None
+                            # Attempt to get class names from dataset
+                            if hasattr(self.val_dataset, 'get_class_names') and callable(self.val_dataset.get_class_names):
+                                class_names = self.val_dataset.get_class_names(task)
+
+                            # Fallback: get num_classes from model config and generate default names
+                            if class_names is None:
+                                 num_classes_cfg_key = f"{task}_classes"
+                                 num_classes = self.cfg.model.get(num_classes_cfg_key)
+                                 if num_classes is not None:
+                                      class_names = [str(i) for i in range(num_classes)]
+                                 else:
+                                      log.warning(f"Could not determine class names or number of classes for task '{task}' for confusion matrix.")
+
+                            if class_names is not None:
+                                wandb.log({f"val/{task}_confusion_matrix": wandb.plot.confusion_matrix(
+                                             preds=all_preds[task],
+                                             y_true=all_labels[task],
+                                             class_names=class_names
+                                           )}, step=epoch+1)
+
+                       except Exception as e:
+                            log.error(f"Failed to log confusion matrix for task '{task}': {e}")
 
 
     def run(self):
@@ -378,12 +446,16 @@ class ProbeTrainer(BaseTrainer):
             try:
                 # Determine input dim for saving checkpoint
                 input_dim_saved = -1
-                if hasattr(self.model, 'age_classifier'):
-                    input_dim_saved = self.model.age_classifier.in_features
-                elif hasattr(self.model, 'gender_classifier'):
-                     input_dim_saved = self.model.gender_classifier.in_features
-                elif hasattr(self.model, 'race_classifier'):
-                     input_dim_saved = self.model.race_classifier.in_features
+                # Helper to get input dim safely
+                def get_input_dim(classifier_name):
+                    if hasattr(self.model, classifier_name):
+                        return getattr(self.model, classifier_name).in_features
+                    return -1
+
+                for task in self.tasks:
+                    input_dim_saved = get_input_dim(f"{task}_classifier")
+                    if input_dim_saved != -1:
+                         break # Found input dim from first available classifier
 
                 # Use self.num_epochs instance attribute
                 self._save_checkpoint(
