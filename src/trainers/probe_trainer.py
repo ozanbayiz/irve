@@ -206,15 +206,25 @@ class ProbeTrainer(BaseTrainer):
 
             batch_size_current = features.size(0) # Get current batch size
 
+            # --- Apply Mean Pooling ---
+            # Assuming features shape is [B, S, E], pool over sequence dim (1) -> [B, E]
+            if features.dim() == 3:
+                features = torch.mean(features, dim=1)
+            elif features.dim() != 2:
+                log.error(f"Train: Unexpected feature dimension {features.dim()}. Expected 2 or 3. Skipping batch.")
+                continue
+            # --------------------------
+
             # Common forward pass (potentially under autocast)
             try:
                 # Use autocast for the forward pass
                 with autocast(enabled=self.use_amp):
-                    model_outputs = self.model(features)
+                    model_outputs = self.model(features) # Now features should be [B, E]
                     if not isinstance(model_outputs, tuple) or len(model_outputs) != len(self.tasks):
                         raise TypeError(f"Model output mismatch. Expected Tuple length {len(self.tasks)}, got {type(model_outputs)} len {len(model_outputs)}")
             except Exception as e:
-                log.exception(f"Train: Error during model forward pass: {e}")
+                # Catch potential shape mismatches here if pooling wasn't enough or classifier in_features is wrong
+                log.exception(f"Train: Error during model forward pass (Input shape: {features.shape}): {e}")
                 continue
 
             # Process each task's loss and backward pass
@@ -256,7 +266,8 @@ class ProbeTrainer(BaseTrainer):
                     batch_correct_counts.pop(task, None) # Remove task if error
                     continue
                 except RuntimeError as e:
-                    log.exception(f"Train: Runtime error during backward/step for task '{task}': {e}")
+                    # More specific logging for shape errors during criterion/backward/step
+                    log.exception(f"Train: Runtime error during backward/step for task '{task}' (Preds shape: {preds.shape}, Labels shape: {labels.shape if 'labels' in locals() else 'N/A'}): {e}")
                     # Skip accuracy update for this task in this batch
                     batch_correct_counts.pop(task, None) # Remove task if error
                     continue # Skip to next task or batch if one task fails
@@ -319,10 +330,19 @@ class ProbeTrainer(BaseTrainer):
                 batch_size = features.size(0)
                 total_samples += batch_size
 
+                # --- Apply Mean Pooling ---
+                # Assuming features shape is [B, S, E], pool over sequence dim (1) -> [B, E]
+                if features.dim() == 3:
+                    features = torch.mean(features, dim=1)
+                elif features.dim() != 2:
+                    log.error(f"Val: Unexpected feature dimension {features.dim()}. Expected 2 or 3. Skipping batch.")
+                    continue
+                # --------------------------
+
                 try:
                     # Use autocast for the forward pass during validation
                     with autocast(enabled=self.use_amp):
-                        model_outputs = self.model(features)
+                        model_outputs = self.model(features) # Now features should be [B, E]
                         if not isinstance(model_outputs, tuple) or len(model_outputs) != len(self.tasks):
                              raise TypeError(f"Val: Model output mismatch. Expected Tuple length {len(self.tasks)}, got {type(model_outputs)} len {len(model_outputs)}")
 
@@ -338,7 +358,7 @@ class ProbeTrainer(BaseTrainer):
                                 log.warning(f"Val: Missing label for task '{task}' in batch, loss not calculated.")
 
                 except Exception as e:
-                    log.exception(f"Val: Error during model forward pass or loss calculation: {e}")
+                    log.exception(f"Val: Error during model forward pass or loss calculation (Input shape: {features.shape}): {e}")
                     continue
 
                 # Accumulate losses and calculate accuracy (outside autocast)
