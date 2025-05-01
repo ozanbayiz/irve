@@ -2,37 +2,41 @@
 # Main configuration entry point
 
 defaults:
-  - model: linear_probe
-  - data: fairface_labels
-  - trainer: linear_probe_trainer # This now brings in the class and its HPs
+  # Define groups. Task MUST be specified. Others are optional at this top level,
+  # as the selected task config should specify its required model, data, trainer, etc.
+  - optional task: default     # Task MUST be provided via CLI
+  - optional model: default    # Specific model is determined by the task config
+  - optional data: default     # Specific data is determined by the task config
+  - optional trainer: default  # Specific trainer is determined by the task config
   # Optional overrides can be placed in a separate file (e.g., local.yaml)
   # and added to the defaults list:
   # - override local # Keep sensitive info like API keys out of main config
   - _self_ # Include settings defined directly below last
 
-# --- Common Settings ---
+# --- Common Settings (These are generally always needed) ---
 # Use environment variables or set defaults
 project_root: ${oc.env:PROJECT_ROOT,.}
 data_root: ${oc.env:DATA_ROOT,${project_root}/data}
 # Ensure SCRATCH exists or default to project_root/outputs
 output_root: ${oc.env:SCRATCH,${project_root}/outputs}
 
-# --- WandB Settings ---
+# --- WandB Settings (Likely always needed, can be overridden by task) ---
 wandb:
-  project: "irve-linear-probes" # Default project name
+  project: "irve-sae-patches" # Default project name (Adjust if needed)
   entity: null # Set your WandB entity via env var (WANDB_ENTITY) or here
   log_config: True
   log_model: True # Save final model checkpoint as wandb artifact
 
-# --- Global Training Settings ---
+# --- Global Training Settings (Likely always needed) ---
 device: "auto" # auto | cpu | cuda
 
-# --- Hydra Settings ---
+# --- Hydra Settings (Always needed) ---
 hydra:
   run:
-    # Output structure: outputs/experiment_name/YYYY-MM-DD/HH-MM-SS
-    dir: ${output_root}/${hydra.job.config_name}/${now:%Y-%m-%d}/${now:%H-%M-%S}
+    # Simpler default output: outputs/YYYY-MM-DD/HH-MM-SS
+    # Task name will be part of the logged config.
+    dir: ${output_root}/${now:%Y-%m-%d}/${now:%H-%M-%S}
   sweep:
-    # Output structure for sweeps: multirun/experiment_name/YYYY-MM-DD/HH-MM-SS/job_num_overrides
-    dir: ${output_root}/multirun/${hydra.job.config_name}/${now:%Y-%m-%d}/${now:%H-%M-%S}
-    subdir: ${hydra.job.num}_${hydra.job.override_dirname} # Example subdir naming 
+    # Output structure for sweeps: multirun/YYYY-MM-DD/HH-MM-SS/job_num_overrides
+    dir: ${output_root}/multirun/${now:%Y-%m-%d_%H-%M-%S}
+    subdir: ${hydra.job.num}_${hydra.job.override_dirname}

@@ -1,3 +1,4 @@
+# REMOVE hydra import if only used for the decorator
 import hydra
 from omegaconf import DictConfig, OmegaConf
 import pandas as pd
@@ -50,11 +51,14 @@ def create_stratified_subset(dataset, stratify_columns, target_samples_per_strat
     # Return the list of indices for selection
     return final_indices, actual_samples_per_stratum
 
-
-@hydra.main(config_path="../../config", config_name="task/prepare_subset", version_base=None)
-def main(cfg: DictConfig):
-    log.info("Starting FairFace Stratified Subsetting...")
-    log.info(f"Configuration:\n{OmegaConf.to_yaml(cfg)}")
+# REMOVE the @hydra.main decorator
+# @hydra.main(config_path="../../config", config_name="task/prepare_subset", version_base=None)
+# RENAME the function slightly to avoid confusion with the outer main.py, or keep as main
+# It now accepts the fully resolved config 'cfg' from the caller (src/main.py)
+def run_task(cfg: DictConfig):
+    log.info("Starting FairFace Stratified Subsetting Task...")
+    # Config is already resolved, use it directly
+    log.info(f"Using Configuration passed from main runner:\n{OmegaConf.to_yaml(cfg)}")
 
     seed = cfg.data.random_seed
     stratify_columns = list(cfg.data.stratify_columns) # Ensure it's a list
@@ -89,23 +93,23 @@ def main(cfg: DictConfig):
     )
 
     # --- Save Indices ---
+    # Access paths directly from the passed cfg object
     output_dir = cfg.data.subset_indices_dir
     train_output_file = cfg.data.train_indices_file
     val_output_file = cfg.data.val_indices_file
 
     try:
-        os.makedirs(output_dir, exist_ok=True)
-        log.info(f"Saving train indices to: {train_output_file}")
-        np.save(train_output_file, np.array(train_indices, dtype=int))
+        # Use os.path.join for better path construction
+        full_train_path = os.path.join(hydra.utils.get_original_cwd(), train_output_file)
+        full_val_path = os.path.join(hydra.utils.get_original_cwd(), val_output_file)
+        full_output_dir = os.path.dirname(full_train_path) # Get dir from full path
 
-        log.info(f"Saving validation indices to: {val_output_file}")
-        np.save(val_output_file, np.array(val_indices, dtype=int))
+        os.makedirs(full_output_dir, exist_ok=True)
+        log.info(f"Saving train indices to: {full_train_path}")
+        np.save(full_train_path, np.array(train_indices, dtype=int))
 
-        # Optionally save stratum counts for reference
-        # with open(os.path.join(output_dir, "train_stratum_counts.json"), 'w') as f:
-        #     json.dump(train_stratum_counts, f, indent=2)
-        # with open(os.path.join(output_dir, "val_stratum_counts.json"), 'w') as f:
-        #     json.dump(val_stratum_counts, f, indent=2)
+        log.info(f"Saving validation indices to: {full_val_path}")
+        np.save(full_val_path, np.array(val_indices, dtype=int))
 
     except Exception as e:
         log.error(f"Failed to save subset indices: {e}")
@@ -115,5 +119,7 @@ def main(cfg: DictConfig):
     log.info(f"Train subset size: {len(train_indices)}")
     log.info(f"Validation subset size: {len(val_indices)}")
 
-if __name__ == "__main__":
-    main() 
+
+# REMOVE the __main__ block as this script is not meant to be run directly anymore
+# if __name__ == "__main__":
+#     main() 

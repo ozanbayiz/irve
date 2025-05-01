@@ -2,10 +2,9 @@
 
 defaults:
   - _self_
-  - data: fairface_stratified # Load the stratification config
-  - path: default           # Load default paths
-  - override hydra/hydra_logging: disabled
-  - override hydra/job_logging: disabled
+  # - data: fairface_stratified # Select specific data config (overrides default from config.yaml if different)
+  # - override hydra/hydra_logging: disabled
+  # - override hydra/job_logging: disabled
 
 hydra:
   output_subdir: null
