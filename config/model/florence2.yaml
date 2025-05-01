@@ -1,0 +1,11 @@
+# Configuration for Florence-2 Model loading
+
+# Hugging Face model identifier
+model_identifier: microsoft/Florence-2-base # Use base or ft version as needed
+
+# Specify device (e.g., "cuda", "cpu", "auto")
+device: auto
+
+# Potential parameters for preprocessing or specific model loading options
+# (Add as needed based on src/deconstructed_florence.py or direct transformer usage)
+# image_size: 224 # Example if needed 

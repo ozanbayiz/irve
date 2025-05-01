@@ -1,0 +1,19 @@
+# Hydra task configuration for running the patch extraction script
+
+defaults:
+  - _self_
+  - data: fairface_stratified # Need subset index paths
+  - path: default           # Need output HDF5 path
+  - model: florence2        # Need model identifier
+  - override hydra/hydra_logging: disabled
+  - override hydra/job_logging: disabled
+
+hydra:
+  output_subdir: null
+  run:
+    dir: .
+
+# Batch size for processing images during extraction
+batch_size: 64
+
+script_target: src.scripts.extract_florence_patches.main # Example target function 

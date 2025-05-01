@@ -1,0 +1,19 @@
+# Default Wandb Configuration
+
+# Set project name for organizing runs
+project: "sae_interpretability_patches" # Changed to be specific
+
+# Your Wandb entity (username or team name) - SET THIS!
+entity: null # Replace with your wandb entity
+
+# Optional: Add tags to runs
+tags: ["sae", "florence2", "patches", "fairface"]
+
+# Run name prefix (trainer script might append details)
+run_name_prefix: "sae_patch_train"
+
+# Mode ("online", "offline", "disabled")
+mode: "online"
+
+# Directory for offline runs or temporary files
+# dir: ${hydra:runtime.output_dir}/wandb # Example: log within hydra outputs 

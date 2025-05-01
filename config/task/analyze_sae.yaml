@@ -1,0 +1,18 @@
+# Hydra task configuration for running the SAE correlation analysis
+
+defaults:
+  - _self_
+  - analysis: sae_correlation # Load analysis parameters
+  - path: default            # Load default paths
+  # Include model config if needed to instantiate SAE class structure before loading state_dict
+  - model: sae_patch         # Load SAE model structure config
+  - override hydra/hydra_logging: disabled
+  - override hydra/job_logging: disabled
+
+hydra:
+  output_subdir: null # Avoid nesting output dir if specified in analysis config
+  run:
+    dir: .
+
+# Target script/function
+script_target: src.eda.analyze_sae_patch_correlations.main # Example target 

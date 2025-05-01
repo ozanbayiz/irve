@@ -1,0 +1,21 @@
+# @package _group_
+# Configuration for FairFace Stratified Subsetting
+
+# Columns to stratify on (from FairFace dataset features)
+# Examples: ['race'], ['gender'], ['age'], ['race', 'gender']
+stratify_columns: ['race', 'gender', 'age']
+
+# Target number of samples per stratum in the training subset
+target_samples_per_stratum_train: 100 # Adjust as needed
+
+# Target number of samples per stratum in the validation/analysis subset
+target_samples_per_stratum_val: 50   # Adjust as needed
+
+# Seed for reproducible random sampling during stratification
+random_seed: 42
+
+# Path to save the intermediate subset references (e.g., indices)
+# These will be created by prepare_fairface_subset and read by extract_florence_patches
+subset_indices_dir: ${path.data_root}/subset_indices # Assumes path.data_root is defined
+train_indices_file: ${.subset_indices_dir}/train_subset_indices.npy
+val_indices_file: ${.subset_indices_dir}/val_subset_indices.npy 

@@ -1,0 +1,40 @@
+# Configuration for analyzing correlations between SAE features and demographic labels
+
+# --- Input Data ---
+# Path to the HDF5 file containing validation patches and labels
+# Should match the file generated in Phase 1
+hdf5_path: ${path.patch_embeddings_file} # Inherit from default path config
+validation_split_group: "validation" # Group name within HDF5
+
+# --- Trained SAE Model ---
+# Specify how to load the trained SAE model (choose one method):
+# 1. Path to a local checkpoint file:
+sae_checkpoint_path: ${path.checkpoint_dir}/sae_patch/final_model.pth # Example path
+# 2. Wandb run ID and optional artifact alias (script needs wandb API logic to download):
+# wandb_run_id: "your_wandb_project/run_id_here" # Example: "my_entity/sae_interpretability_patches/abcdef12"
+# wandb_artifact_alias: "latest" # Or specific version like "v5"
+
+# --- Analysis Parameters ---
+# Choose analysis method: 'stats_test' (t-test/ANOVA) or 'linear_probe' (not fully implemented below)
+method: 'stats_test'
+
+# Significance level for statistical tests
+alpha: 0.05
+
+# Method for multiple comparison correction ('fdr_bh', 'bonferroni', None)
+# 'fdr_bh' (Benjamini/Hochberg) is generally recommended
+multiple_test_correction: 'fdr_bh'
+
+# Batch size for computing SAE activations on validation data
+activation_batch_size: 8192 # Adjust based on GPU memory
+
+# --- Output ---
+# Number of top features to report/visualize per demographic
+top_n_features: 20
+
+# Directory to save analysis results (e.g., CSV files of ranked features)
+output_dir: ${path.outputs_root}/analysis/sae_correlation # Store within hydra outputs or specific analysis dir
+results_prefix: "sae_patch_correlation" # Prefix for output files
+
+# Device for analysis computations
+device: ${model.device} # Inherit device (can override: "cuda", "cpu") 

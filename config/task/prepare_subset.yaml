@@ -1,0 +1,18 @@
+# Hydra task configuration for running the stratification script
+
+defaults:
+  - _self_
+  - data: fairface_stratified # Load the stratification config
+  - path: default           # Load default paths
+  - override hydra/hydra_logging: disabled
+  - override hydra/job_logging: disabled
+
+hydra:
+  output_subdir: null
+  run:
+    dir: .
+
+# Specify the script/function to run for this task (adjust if main.py handles tasks differently)
+# This assumes you might call a function within a script registered with Hydra,
+# or trigger the script directly. Adapt based on your main.py structure.
+script_target: src.datasets.prepare_fairface_subset.main # Example target function if using Hydra's instantiation 

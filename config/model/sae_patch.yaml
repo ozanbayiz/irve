@@ -1,0 +1,21 @@
+# Configuration for the Sparse Autoencoder model trained on patches
+
+# Input dimension must match the feature dimension from patch extraction (e.g., 768)
+input_dim: 768
+
+# Expansion factor: hidden_dim = input_dim * hidden_dim_factor
+# Adjust based on computational resources and desired overcompleteness
+hidden_dim_factor: 32 # Example: 768 * 32 = 24576 hidden features
+
+# Use tied weights (decoder weights = transpose of encoder weights)?
+# Simplifies model, reduces parameters. Might affect reconstruction.
+tied_weights: true
+
+# Activation function for the encoder's hidden layer (ReLU is standard for sparsity)
+activation_fn: 'relu' # Could be 'gelu' etc., but ReLU + L1 is common
+
+# Add bias term to encoder?
+encoder_bias: true
+
+# Add bias term to decoder? Usually yes, unless input is centered.
+decoder_bias: true 

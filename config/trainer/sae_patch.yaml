@@ -1,0 +1,40 @@
+# Configuration for the SAE Patch Trainer
+
+# --- Training Hyperparameters ---
+# Sparsity penalty coefficient (lambda in the loss function)
+# Needs tuning to achieve desired L0 norm / sparsity level. Start small.
+lambda_sparsity: 1e-3
+
+# Optimizer settings (AdamW recommended)
+optimizer:
+  _target_: torch.optim.AdamW
+  lr: 3e-4           # Initial learning rate
+  weight_decay: 0.01 # Weight decay (L2 penalty on weights, not activations)
+  betas: [0.9, 0.999]
+
+# Learning rate scheduler (Optional, but recommended)
+# Example: Linear warmup followed by cosine decay
+lr_scheduler:
+  use_scheduler: true
+  warmup_steps: 500      # Number of linear warmup steps
+  # max_steps will be calculated based on epochs/steps below
+
+# --- Training Loop ---
+batch_size: 4096 # Adjust based on GPU memory. Patches are small, large batch sizes possible.
+
+# Define training duration (choose one method)
+# 1. By number of epochs (passes through the dataset)
+num_epochs: 5        # Example: 5 epochs
+# 2. By number of gradient steps (useful for very large datasets)
+# max_steps: 100000  # Example: 100k steps (Comment out if using epochs)
+
+# --- Logging and Checkpointing ---
+# Log metrics to wandb every N steps
+log_interval: 100
+
+# Save checkpoints every N steps (or epochs, adapt logic in trainer)
+checkpoint_interval: 1000
+checkpoint_dir: ${path.checkpoint_dir}/sae_patch # Use path from default config
+
+# Device for training
+device: ${model.device} # Inherit device from model config (or set explicitly: "cuda", "cpu") 

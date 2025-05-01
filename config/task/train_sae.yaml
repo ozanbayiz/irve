@@ -1,0 +1,19 @@
+# Hydra task configuration for training the SAE on patches
+
+defaults:
+  - _self_
+  - model: sae_patch        # Load SAE model config
+  - trainer: sae_patch      # Load SAE trainer config
+  - data: default           # Need path to patch HDF5 (defined in path)
+  - path: default           # Load default paths
+  - wandb: default          # Load wandb config
+  - override hydra/hydra_logging: disabled
+  - override hydra/job_logging: disabled
+
+hydra:
+  output_subdir: null # Avoid creating nested dirs for logs/checkpoints if handled by wandb/trainer
+  run:
+    dir: . # Outputs relative to cwd where command is run
+
+# Specify the target function/script for Hydra to run
+script_target: src.trainers.sae_patch_trainer.main # Example target 

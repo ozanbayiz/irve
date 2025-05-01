@@ -1,0 +1,13 @@
+# Define base paths - adjust data_root if necessary
+data_root: data
+outputs_root: outputs # Default Hydra output location
+# Add other paths as needed...
+
+# Path for the HDF5 file containing patch embeddings
+patch_embeddings_file: ${path.data_root}/sae_patch_embeddings_fairface_stratified.hdf5
+
+# Path for saving/loading subset indices
+subset_indices_dir: ${path.data_root}/subset_indices # Referenced by data config
+
+# Path for trained model checkpoints (example)
+checkpoint_dir: ${path.outputs_root}/checkpoints 
