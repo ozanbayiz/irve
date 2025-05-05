@@ -3,7 +3,7 @@
 
 defaults:
   - model: linear_probe
-  - data: fairface_labels
+  - dataset: fairface_labels
   - trainer: linear_probe_trainer # This now brings in the class and its HPs
   # Optional overrides can be placed in a separate file (e.g., local.yaml)
   # and added to the defaults list:

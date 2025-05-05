@@ -28,26 +28,27 @@ from src.datasets.datasets import dataset_worker_init_fn
 log = logging.getLogger(__name__)
 
 class SAETrainer(BaseTrainer): # Inherit from BaseTrainer
-    def __init__(self,
-                 cfg: DictConfig,
-                 # Standard HP Names
-                 learning_rate: float,
-                 batch_size: int,
-                 num_epochs: int,
-                 # SAE Specific HP
-                 l1: float,
-                 # Optional Standard HPs
-                 num_workers: int = 0,
-                 pin_memory: bool = True,
-                 # Optimization Flags
-                 amp_enabled: bool = True, # Enable AMP by default if available
-                 compile_enabled: bool = False, # Disabled by default
-                 validate_every_n_epochs: int = 1, # Validate every epoch by default
-                 # DDP parameters (will be set by main script)
-                 rank: int = 0,
-                 local_rank: int = 0,
-                 world_size: int = 1
-                 ):
+    def __init__(
+        self,
+        cfg: DictConfig,
+        # Standard HP Names
+        learning_rate: float,
+        batch_size: int,
+        num_epochs: int,
+        # SAE Specific HP
+        l1: float,
+        # Optional Standard HPs
+        num_workers: int = 0,
+        pin_memory: bool = True,
+        # Optimization Flags
+        amp_enabled: bool = True, # Enable AMP by default if available
+        compile_enabled: bool = False, # Disabled by default
+        validate_every_n_epochs: int = 1, # Validate every epoch by default
+        # DDP parameters (will be set by main script)
+        rank: int = 0,
+        local_rank: int = 0,
+        world_size: int = 1
+    ):
         # Pass DDP parameters to BaseTrainer
         super().__init__(cfg, rank, local_rank, world_size)
         # self.cfg is already set by BaseTrainer
@@ -236,9 +237,16 @@ class SAETrainer(BaseTrainer): # Inherit from BaseTrainer
             return batch # Return directly
         else:
             # log.debug(f"Rank {self.rank}: Input batch shape: {batch.shape}. Taking mean over dim=1.")
-            batch_averaged = torch.mean(batch, dim=1)
+            # batch_averaged = torch.mean(batch, dim=1)
+
+            batch_flattened = (
+                batch[:,1:,:] # don't want the first one
+                .reshape(-1, 768) # hardcoded cause im lit
+            ) # Shape (Batch*566 x 768)
+
             # log.debug(f"Rank {self.rank}: Averaged batch shape: {batch_averaged.shape}")
-            return batch_averaged
+            # return batch_averaged
+            return batch_flattened
             # Note: Averaging happens *after* moving to GPU here. Could be done before.
 
 
