@@ -19,8 +19,8 @@ log = logging.getLogger(__name__)
 
 # --- Configuration (Global Variables) ---
 INPUT_HDF5_PATH = Path("data/ve_latent_fairface.hdf5") # Path to the input HDF5 file (containing vision encoder 'encoded' dataset, 'labels', 'original_indices').
-OUTPUT_RAW_DATA_HDF5_PATH = Path("output_data/sae_latent_fairface.hdf5") # Path for the output file containing raw token latents.
-OUTPUT_AGG_DATA_HDF5_PATH = Path("output_data/agg_sae_latent_fairface.hdf5") # Path for the output file containing aggregated latents.
+OUTPUT_RAW_DATA_HDF5_PATH = Path("data/sae_latent_fairface.hdf5") # Path for the output file containing raw token latents.
+OUTPUT_AGG_DATA_HDF5_PATH = Path("data/agg_sae_latent_fairface.hdf5") # Path for the output file containing aggregated latents.
 SAE_CHECKPOINT_PATH = Path("sae_final.pth")      # Path to the SAE model checkpoint (`.pth`). # TODO: Update with actual path
 BATCH_SIZE = 128                  # Batch size (number of *input samples*, e.g., images, per iteration).
 RAW_DATA_STORAGE_DTYPE = np.float16 # Dtype for raw SAE latents.

@@ -2,9 +2,9 @@ _target_: src.trainers.sae_trainer.SAETrainer
 
 # --- Training Hyperparameters ---
 learning_rate: 1e-4
-batch_size: 256
-num_epochs: 20
-l1: 0.001
+batch_size: 128
+num_epochs: 50
+l1: 0.0001
 
 # --- DataLoader Parameters ---
 num_workers: 4
