@@ -463,7 +463,7 @@ class ProbeTrainer(BaseTrainer):
                   log.info(f"*** New best validation loss for 'race': {self.best_race_val_loss:.4f}. Saving checkpoint... ***")
                   try:
                        self._save_checkpoint(
-                           filename="best_race_model.pth", # Specific name for best race model
+                           filename="lp_best.pth", # Specific name for best race model
                            epoch=epoch + 1,
                            race_val_loss=self.best_race_val_loss # Save the specific loss
                            # Include other relevant info if needed
