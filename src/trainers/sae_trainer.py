@@ -69,7 +69,8 @@ class SAETrainer(BaseTrainer): # Inherit from BaseTrainer
         # Store optimization flags
         self.amp_enabled = amp_enabled and AMP_AVAILABLE and (self.device.type == 'cuda')
         # Note: torch.compile compatibility with DDP and AMP can vary by version
-        self.compile_enabled = compile_enabled and hasattr(torch, 'compile')
+        # self.compile_enabled = compile_enabled and hasattr(torch, 'compile')
+        self.compile_enabled = False # nah bro we not compiling. it's not worth it.
         self.validate_every_n_epochs = validate_every_n_epochs
 
         # Initialize other attributes (model, optimizer, etc.) to None
@@ -103,14 +104,14 @@ class SAETrainer(BaseTrainer): # Inherit from BaseTrainer
              log.info("Setting up SAE Trainer components...")
 
         # --- Data ---
-        if self.rank == 0: log.info(f"Instantiating dataset using config: {self.cfg.data._target_}")
+        if self.rank == 0: log.info(f"Instantiating dataset using config: {self.cfg.dataset._target_}")
         try:
             # Instantiate datasets on all ranks
-            self.train_dataset = hydra.utils.instantiate(self.cfg.data, mode='training')
-            self.val_dataset = hydra.utils.instantiate(self.cfg.data, mode='validation')
+            self.train_dataset = hydra.utils.instantiate(self.cfg.dataset, mode='training')
+            self.val_dataset = hydra.utils.instantiate(self.cfg.dataset, mode='validation')
             if self.rank == 0: log.info(f"Datasets created: Train size={len(self.train_dataset)}, Val size={len(self.val_dataset)}")
         except Exception as e:
-             log.exception(f"Rank {self.rank}: Failed to instantiate dataset using {self.cfg.data._target_}. Ensure it accepts a 'mode' argument.")
+             log.exception(f"Rank {self.rank}: Failed to instantiate dataset using {self.cfg.dataset._target_}. Ensure it accepts a 'mode' argument.")
              if self.is_distributed: dist.barrier() # Wait for others before exiting
              raise
 
